@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"/><title>智财代账工作台项目书</title>
+<style>
+:root {
+  --font-body: "Microsoft YaHei", "SimSun", sans-serif;
+  --font-head: "Microsoft YaHei", "SimHei", sans-serif;
+  --color-primary: #714B67;
+  --color-text: #212529;
+  --color-muted: #6C757D;
+  --color-border: #CCCCCC;
+  --color-code-bg: #F5F5F5;
+}
+body { font-family: var(--font-body); font-size: 11pt; color: var(--color-text); line-height: 1.6; }
+h1 { font-family: var(--font-head); font-size: 22pt; color: var(--color-primary); border-bottom: 2px solid var(--color-primary); padding-bottom: 8px; }
+h2 { font-family: var(--font-head); font-size: 17pt; color: var(--color-primary); margin-top: 24px; }
+h3 { font-family: var(--font-head); font-size: 14pt; color: var(--color-text); margin-top: 18px; }
+h4 { font-family: var(--font-head); font-size: 12pt; color: var(--color-text); margin-top: 14px; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+th { background-color: #EFE9ED; border: 1px solid var(--color-border); padding: 5px 8px; font-weight: bold; text-align: left; }
+td { border: 1px solid var(--color-border); padding: 5px 8px; }
+code { font-family: Consolas, monospace; background-color: var(--color-code-bg); }
+pre { background-color: var(--color-code-bg); border: 1px solid var(--color-border); padding: 8px; font-size: 9.5pt; }
+pre code { background-color: transparent; }
+blockquote { border-left: 3px solid var(--color-primary); padding-left: 10px; color: var(--color-muted); margin: 8px 0; }
+hr { border: none; border-top: 1px solid var(--color-border); margin: 16px 0; }
+li { margin: 3px 0; }
+li.sub { margin-left: 18pt; color: var(--color-text); }
+strong { color: #000000; }
+</style>
+</head>
+<body>
+<h1>智财代账工作台（ZhiCai Workbench）项目书</h1>
+<p style="color:#6C757D; margin-left:12pt;"><strong>版本</strong>：v1.0 ｜ <strong>日期</strong>：2026-09-02 ｜ <strong>文档性质</strong>：开发蓝图（供 Codex 作为唯一需求输入进行代码开发与项目实现）<br/><strong>一句话定位</strong>：借鉴 Odoo 开源 ERP 的架构思想与数据模型设计，为&quot;一人代理记账公司管理 100 家客户账务&quot;打造一套部署在本机、零外部服务依赖、主打自动记账与云端备份的 WebUI 工作台。</p>
+<hr/>
+<h2>0. 文档使用说明（Codex 必读）</h2>
+<ol><li>本文档是<strong>唯一需求来源</strong>（Single Source of Truth）。实现时若发现本文档内部矛盾，按以下优先级裁决：<strong>第 6 章数据模型 &gt; 第 7 章功能规格 &gt; 第 8 章 UI 规范 &gt; 其他章节</strong>。</li><li>开发节奏：<strong>严格按第 10 章里程碑顺序实施，一次只做一个里程碑（M1 → M7），每个里程碑完成并通过验收标准（DoD）后才进入下一个</strong>。禁止跳步、禁止提前实现后续里程碑的功能。</li><li>所有代码、注释、提交信息、界面文案：<strong>代码与标识符用英文，界面文案与注释用简体中文</strong>。</li><li>技术栈与目录结构在第 4、5 章已定死，<strong>不得自行更换框架或重构目录结构</strong>。</li><li>每个里程碑交付时必须包含：可运行代码 + 自动化测试（pytest）+ README 更新（运行方式与变更说明）。</li><li>遇到本文档未覆盖的业务细节，按&quot;中国小企业会计准则 + 税务常识&quot;做合理默认实现，并在 README 的&quot;假设与决策记录&quot;小节中登记，<strong>不要停下来提问</strong>。</li></ol>
+<hr/>
+<h2>1. 项目概述</h2>
+<h3>1.1 背景与痛点</h3>
+<p>使用者是一家一人经营的代理记账公司（老板 = 唯一操作者 = 会计 = 管理员），同时为约 100 家中小微企业提供代理记账与报税服务。当前工作方式的痛点：</p>
+<table><tr><th>#</th><th>痛点</th><th>具体表现</th></tr><tr><td>P1</td><td>客户与期限管理散乱</td><td>100 家客户的资料、合同到期日、各税种申报期限分散在 Excel、微信、脑子里，容易漏报、漏收</td></tr><tr><td>P2</td><td>凭证手工录入效率低</td><td>每月数千张发票、银行流水靠手工录凭证，重复劳动占比极高</td></tr><tr><td>P3</td><td>多客户切换繁琐</td><td>每换一家客户就要切换一套账，缺少统一总览与批量处理视角</td></tr><tr><td>P4</td><td>外贸客户流程特殊</td><td>需对接单一窗口、电子口岸、外汇等平台，报关/收汇/退税资料容易断档</td></tr><tr><td>P5</td><td>数据安全无保障</td><td>客户账务数据在单机 Excel/旧软件中，无自动备份，硬盘故障即灾难</td></tr><tr><td>P6</td><td>专业软件重且贵</td><td>主流代账软件按客户数收费、年费高，且很多功能为多人团队设计，单人用不动</td></tr></table>
+<h3>1.2 项目目标</h3>
+<ul><li><strong>G1 统一工作台</strong>：一个浏览器界面管完 100 家客户的档案、合同、记账、报税、收费、文档。</li><li><strong>G2 自动记账</strong>：发票、银行流水按规则自动生成凭证（借鉴 Odoo 的 account.reconcile 自动对账模型思想），把手工录入量降到 20% 以下。</li><li><strong>G3 不漏不迟</strong>：申报日历 + 任务看板，每客户每税种每属期的申报状态一目了然。</li><li><strong>G4 外贸专区</strong>：报关单、出口发票、收汇结汇、出口退税全流程台账。</li><li><strong>G5 本机部署 + 云备份</strong>：系统跑在自己电脑上（无外网依赖、数据不出本机），SQLite 单文件数据库每日自动备份到 OneDrive 同步目录。</li><li><strong>G6 Odoo 级的架构品质</strong>：模块化、模型驱动 UI（Metadata-driven UI）、多账套隔离、操作审计——把 Odoo 二十年沉淀的 ERP 架构精华移植到轻量技术栈上。</li></ul>
+<h3>1.3 范围界定（Scope）</h3>
+<p><strong>做（In Scope）</strong>：</p>
+<ul><li>单机 Web 应用（本机浏览器访问 localhost），单用户为主、预留多角色。</li><li>100 家客户账套的数据隔离与全局总览。</li><li>借鉴 Odoo 架构的自研系统（详见第 3 章&quot;借鉴策略&quot;）。</li></ul>
+<p><strong>不做（Out of Scope，第一版明确排除）</strong>：</p>
+<ul><li>不直接对接税局/海关的 API 自动申报（政策与安全原因，系统只做<strong>计算底稿 + 状态台账 + 官网快捷入口</strong>，实际申报由用户在电子税务局/单一窗口人工完成，完成后回系统登记状态）。</li><li>不做多用户实时协同、不做移动 App（Web 响应式布局可被手机浏览器访问即可）。</li><li>不做进销存、生产制造、电商等 Odoo 其他领域模块。</li></ul>
+<hr/>
+<h2>2. 业务全景分析</h2>
+<h3>2.1 角色画像</h3>
+<table><tr><th>角色</th><th>说明</th><th>权限</th></tr><tr><td>admin（老板本人）</td><td>唯一日常使用者，全权</td><td>所有模块读写 + 系统设置</td></tr><tr><td>accountant（预留）</td><td>未来可能雇的助理会计</td><td>记账/发票/申报读写，无系统设置与删除权限</td></tr><tr><td>viewer（预留）</td><td>只读（如给客户演示）</td><td>只读</td></tr></table>
+<p style="color:#6C757D; margin-left:12pt;">当前实际只有 admin 一个账号。权限模型必须按上述三角色建好（借鉴 Odoo 的 groups + record rules 思想），但 UI 上不复杂化。</p>
+<h3>2.2 核心业务流程</h3>
+<p><strong>流程 A：月度做账流（每月每客户，占工作量 70%）</strong></p>
+<pre><code>收集资料（发票/银行回单/工资表）
+  → 登记/导入进项发票、销项发票
+  → 导入银行流水
+  → 自动记账引擎批量生成凭证 → 人工补录调整凭证
+  → 凭证审核过账（posted）
+  → 期末结转损益（一键）
+  → 出报表：资产负债表 / 利润表 / 科目余额表 / 总账 / 明细账</code></pre>
+<p><strong>流程 B：申报流（每月/每季）</strong></p>
+<pre><code>申报日历提醒（某客户某税种某属期 → 未申报）
+  → 系统生成申报底稿（自动计算应纳税额，含计算过程）
+  → 用户登录电子税务局人工申报（系统提供直达链接）
+  → 回系统标记&quot;已申报&quot;，登记缴款金额与日期
+  → 台账状态流转：未开始 → 待申报 → 已申报未缴款 → 已完成</code></pre>
+<p><strong>流程 C：外贸客户流（部分客户）</strong></p>
+<pre><code>出口业务发生 → 录入报关单（或从单一窗口导出数据后导入）
+  → 开出口发票 → 收汇登记（币种/金额/汇率）
+  → 结汇/待核查 → 出口退税资料归档 → 免抵退税台账</code></pre>
+<p><strong>流程 D：收费流（代账公司自身收入）</strong></p>
+<pre><code>客户合同（代账费标准/周期）→ 到期提醒 → 开票/收款登记 → 应收统计</code></pre>
+<h3>2.3 数据量估算（性能设计的依据）</h3>
+<table><tr><th>数据对象</th><th>单客户/月</th><th>100 客户/月</th><th>10 年累计</th></tr><tr><td>凭证（move）</td><td>~40 张</td><td>~4,000 张</td><td>~48 万</td></tr><tr><td>凭证行（move_line）</td><td>~160 行</td><td>~16,000 行</td><td>~192 万</td></tr><tr><td>发票（进+销）</td><td>~50 张</td><td>~5,000 张</td><td>~60 万</td></tr><tr><td>银行流水</td><td>~60 条</td><td>~6,000 条</td><td>~72 万</td></tr><tr><td>附件（图片/PDF）</td><td>~100 个</td><td>~10,000 个</td><td>文件系统存储，仅元数据入库</td></tr></table>
+<p><strong>结论</strong>：总行量在百万级，SQLite（WAL 模式）绰绰有余；关键查询路径（book_id + date、account_id）必须建索引。单表无分表必要。</p>
+<hr/>
+<h2>3. Odoo 借鉴策略（本项目最重要的架构决策）</h2>
+<h3>3.1 为什么不直接部署 Odoo 本体，而是&quot;架构师从、实现自建&quot;</h3>
+<p>对&quot;以 Odoo 为基座&quot;的两种路线做了评估：</p>
+<table><tr><th>维度</th><th>路线 A：直接用 Odoo 社区版二次开发</th><th>路线 B（本项目采用）：借鉴 Odoo 架构，轻量栈自建</th></tr><tr><td>运行环境</td><td>必须 PostgreSQL + Python 3.11+ + 长驻多进程服务，本机还跑着 Ollama 大模型，内存吃紧</td><td>Python + SQLite，单进程，常驻内存 &lt; 200MB</td></tr><tr><td>部署/运维</td><td>升级模块、数据库迁移、插件兼容问题，一人无 IT 运维扛不住</td><td>双击 start.bat 即用，出问题删库重跑</td></tr><tr><td>中国本地化</td><td>Odoo 社区版中国会计本地化（l10n_cn）能力薄弱，中国式凭证/申报台账仍要大量定制</td><td>从第一天就按中国代账业务建模</td></tr><tr><td>许可证</td><td>Odoo 社区版 LGPL-3.0：直接复制/修改其源码文件，修改部分须按 LGPL 开源（内部使用虽无碍，但定制模块发布受限）</td><td>只借鉴其<strong>架构思想与数据模型设计</strong>（不受版权保护的思想层面），代码 100% 自研重写，不复制任何 Odoo 源码文件，无许可证包袱</td></tr><tr><td>功能匹配度</td><td>Odoo 强项在电商/制造/库存/协同，对&quot;一人管 100 家客户账&quot;是 90% 冗余</td><td>100% 按代账业务裁剪</td></tr></table>
+<p><strong>决策：采用路线 B。</strong> &quot;以 Odoo 为基座&quot;的含义 = 把 Odoo 最有价值的<strong>六大架构资产</strong>作为设计蓝本（见 3.2），而不是把它的代码跑起来。</p>
+<h3>3.2 从 Odoo 借鉴的六大架构资产</h3>
+<p><strong>资产 1：模块化架构（Odoo addons 机制）</strong></p>
+<p>Odoo 中&quot;一切皆模块&quot;：每个模块是一个目录，含 <code>models/</code>（业务对象）、<code>views/</code>（界面定义）、<code>security/</code>（权限）、<code>data/</code>（初始化数据），由 <code>__manifest__.py</code> 声明依赖。模块可插拔、可叠加扩展。</p>
+<p>→ 本项目实现：<code>app/modules/&lt;module_name&gt;/</code> 目录约定，模块注册表机制（详见 5.3），每个模块自带 models、API 路由、视图配置（JSON）、种子数据，按依赖顺序自动加载。</p>
+<p><strong>资产 2：数据模型设计（Odoo account / contacts 模块的模型体系）</strong></p>
+<p>Odoo 的会计模型是业界教科书级的复式记账实现：</p>
+<ul><li><code>res.partner</code>：统一的客户/供应商联系人模型（<code>is_company</code>、<code>vat</code> 税号等字段）</li><li><code>account.account</code>：科目表（按公司隔离）</li><li><code>account.journal</code>：账簿/日记账（sale/purchase/bank/cash/misc 五类）</li><li><code>account.move</code>：<strong>凭证与发票统一模型</strong>（自 Odoo 13 起，发票、账单、手工凭证都是 account.move 的不同 <code>move_type</code>），状态机 draft → posted → cancel</li><li><code>account.move.line</code>：凭证行（<code>debit</code>/<code>credit</code>/<code>account_id</code>/<code>partner_id</code>），<strong>借贷合计必须平衡（sum = 0）才能过账</strong>，且&quot;已过账凭证不可修改&quot;（只能红冲/冲销）</li><li><code>account.tax</code>：税种定义（税率、税基类型）</li><li><code>res.company</code> + <code>company_id</code> 字段：<strong>多公司机制</strong>——同一套表、每行数据带公司 ID、查询自动过滤</li></ul>
+<p>→ 本项目照搬这套模型设计并做中国化改造（凭证字、摘要、辅助核算、借贷方向红字冲销等），模型命名保持与 Odoo 一致的可对应关系（见第 6 章映射表）。</p>
+<p><strong>资产 3：模型驱动 UI（Odoo 视图 = XML 配置而非手写页面）</strong></p>
+<p>Odoo 的列表/表单/看板/日历/透视表视图是<strong>数据（XML）</strong>而非代码：开发者声明模型字段与视图配置，前端框架统一渲染。这使新增一个业务模块几乎不用写页面代码。</p>
+<p>→ 本项目实现：视图配置 JSON（每模型声明 list/form 视图的字段、布局、筛选器、动作按钮），前端实现通用 <code>ListView</code> / <code>FormView</code> / <code>KanbanView</code> / <code>CalendarView</code> 渲染器消费这些配置。<strong>这是本项目的核心工程杠杆：通用视图组件写一次，所有模块复用。</strong></p>
+<p><strong>资产 4：ORM 使用范式（Odoo models.Model）</strong></p>
+<p>Odoo ORM 的 recordset 风格：<code>search(domain)</code> 域过滤语法、<code>create/write/unlink</code>、计算字段（<code>@api.depends</code>）、约束校验（<code>@api.constrains</code>）、<code>_order</code> 默认排序、<code>_rec_name</code> 记录显示名。</p>
+<p>→ 本项目实现：SQLAlchemy 2.0 declarative + 自研轻量基类 <code>BaseModel</code>（见 5.3.2），提供 domain 过滤解析、<code>rec_name</code>、审计字段（create_uid/create_date/write_uid/write_date，Odoo 同名字段）等约定。<strong>不重造完整 ORM，只吸收其约定。</strong></p>
+<p><strong>资产 5：Chatter 与审计（Odoo mail.thread mixin）</strong></p>
+<p>Odoo 每条业务记录底部有&quot;沟通区&quot;（chatter）：显示操作日志（谁何时改了什么字段）与内部留言。</p>
+<p>→ 本项目实现：通用 <code>audit_log</code> 表（model + record_id + 变更 JSON）+ 通用 <code>note</code> 表，FormView 底部统一渲染&quot;活动日志&quot;面板。</p>
+<p><strong>资产 6：自动化规则（Odoo automated actions / reconcile models）</strong></p>
+<p>Odoo 支持声明式自动动作（条件触发服务端动作）和银行对账规则模型（<code>account.reconcile.model</code>：按流水描述匹配 → 自动生成凭证）。</p>
+<p>→ 本项目实现：自动记账规则表（触发条件 + 凭证模板，见 7.7），以及通用&quot;计划任务&quot;框架（备份、逾期提醒，见 7.13）。</p>
+<h3>3.3 Odoo 源码参考索引（给 Codex 的阅读地图）</h3>
+<p style="color:#6C757D; margin-left:12pt;">仅作为设计参考阅读，<strong>禁止复制代码</strong>。若需理解某行为的正确做法，优先读这些文件：</p>
+<table><tr><th>借鉴点</th><th>Odoo 源文件（github.com/odoo/odoo，18.0 分支）</th></tr><tr><td>凭证状态机与过账/红冲</td><td><code>addons/account/models/account_move.py</code></td></tr><tr><td>借贷平衡校验、行级约束</td><td><code>addons/account/models/account_move_line.py</code></td></tr><tr><td>科目表与科目类型</td><td><code>addons/account/models/account_account.py</code></td></tr><tr><td>账簿（journal）设计</td><td><code>addons/account/models/account_journal.py</code></td></tr><tr><td>银行对账规则（自动凭证）</td><td><code>addons/account/models/account_reconcile_model.py</code></td></tr><tr><td>科目表模板/初始化</td><td><code>addons/account/models/chart_template.py</code></td></tr><tr><td>模块清单结构</td><td>任意模块的 <code>__manifest__.py</code></td></tr><tr><td>视图 XML 语法</td><td><code>addons/account/views/account_move_views.xml</code></td></tr><tr><td>多公司字段约定</td><td>任意模型中的 <code>company_id = fields.Many2one(&#x27;res.company&#x27;, ...)</code></td></tr></table>
+<hr/>
+<h2>4. 技术选型</h2>
+<h3>4.1 技术栈总览（定稿，不可更改）</h3>
+<table><tr><th>层</th><th>选型</th><th>版本</th><th>说明</th></tr><tr><td>语言</td><td>Python</td><td>3.12+</td><td>用户本机已有 Python 3.13</td></tr><tr><td>Web 框架</td><td>FastAPI</td><td>最新稳定版</td><td>自动 OpenAPI 文档、Pydantic 校验、Codex 熟练度最高</td></tr><tr><td>ORM</td><td>SQLAlchemy</td><td>2.0（declarative）</td><td>成熟稳定，配 Alembic 做迁移</td></tr><tr><td>数据库</td><td>SQLite</td><td>3.x，<strong>开启 WAL 模式</strong></td><td>单文件、零运维、可被 OneDrive 整体备份</td></tr><tr><td>数据校验</td><td>Pydantic v2</td><td>—</td><td>API 层 DTO</td></tr><tr><td>前端框架</td><td>Vue 3</td><td>3.4+，<strong>CDN 全局构建（vue.global.prod.js），不用 Node 构建</strong></td><td>理念与 Odoo OWL 同源（组件化/响应式/虚拟DOM），但生态与 Codex 熟练度远胜 OWL</td></tr><tr><td>UI 组件库</td><td>Element Plus</td><td>最新，CDN 引入</td><td>表格/表单/弹窗/日期选择器开箱即用</td></tr><tr><td>图表</td><td>ECharts 5</td><td>CDN 引入</td><td>仪表盘</td></tr><tr><td>认证</td><td>自研 session（itsdangerous 签名 cookie）</td><td>—</td><td>单机应用不需要 OAuth/JWT 复杂度</td></tr><tr><td>测试</td><td>pytest + httpx（AsyncClient）</td><td>—</td><td>每模块单测 + API 集成测试</td></tr><tr><td>迁移</td><td>Alembic</td><td>—</td><td>表结构演进</td></tr></table>
+<p><strong>CDN 依赖说明</strong>：前端第三方库走 CDN；同时在 <code>static/vendor/</code> 放一份本地副本 + 页面做&quot;CDN 失败回退本地副本&quot;，保证断网可用（<code>&lt;script&gt;</code> 依次尝试）。所有前端资源不允许 Node/npm/webpack/构建步骤。</p>
+<h3>4.2 选型理由（为什么不是别的）</h3>
+<ul><li><strong>为什么不用 Odoo OWL 前端</strong>：OWL 是 Odoo 专用框架，社区小、文档少、Codex 训练数据覆盖差，产出质量风险高。Vue 3 与 OWL 设计理念一致（组件 + 响应式 + 虚拟 DOM），但生态成熟。</li><li><strong>为什么 SQLite 不是 PostgreSQL</strong>：数据量百万级（见 2.3）、单用户写入、无并发热点——SQLite WAL 完全胜任；换来的是&quot;备份 = 复制一个文件&quot;的极简运维，与 G5（云备份）直接对齐。</li><li><strong>为什么 FastAPI 不是 Flask/Django</strong>：Django 太重（admin/ORM/模板全套绑定）；Flask 能做但要手工拼的东西多。FastAPI + Pydantic + 自动文档，Codex 产出质量最稳。</li><li><strong>为什么不用服务端模板渲染（Jinja2 全栈）</strong>：本系统的交互复杂度（可编辑表格、拖拽看板、联动筛选）适合 SPA 模式；且&quot;模型驱动 UI&quot;需要前端持有视图配置动态渲染。</li></ul>
+<h3>4.3 运行环境与部署</h3>
+<ul><li>目标机器：用户 Windows 本机（同时运行 Ollama 等），内存预算 &lt; 300MB。</li><li>启动方式：项目根目录 <code>start.bat</code> —— 检查 venv → 缺依赖则安装 → 启动 uvicorn（127.0.0.1:8000）→ 自动打开默认浏览器。</li><li>配置文件：<code>config.yaml</code>（数据库路径、备份目录、端口、会话密钥），首次启动自动生成默认值并引导初始化管理员账号。</li><li>数据目录：<code>data/zhicai.db</code>（SQLite 主库）+ <code>data/attachments/</code>（附件文件按 <code>YYYY/MM/&lt;uuid&gt;.&lt;ext&gt;</code> 组织，DB 只存元数据——与 Odoo 的 ir.attachment 文件存储策略一致）。</li></ul>
+<hr/>
+<h2>5. 系统架构设计</h2>
+<h3>5.1 总体分层架构</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  浏览器（Vue 3 + Element Plus，CDN 引入，无构建）              │
+│  ├─ AppShell（左侧导航/顶栏/账套切换器/全局搜索）               │
+│  ├─ 通用视图渲染器：ListView / FormView / KanbanView /        │
+│  │   CalendarView / DashboardView（模型驱动，读视图配置JSON）   │
+│  └─ 各模块少量定制页面（凭证录入、对账工作台、报表等）           │
+├─────────────────────────────────────────────────────────────┤
+│  FastAPI 应用层                                               │
+│  ├─ /api/v1/meta/*   元数据 API（模型字段、视图配置、菜单）     │
+│  ├─ /api/v1/data/*   通用 CRUD API（ORM 模型驱动的动态路由）    │
+│  ├─ /api/v1/biz/*    业务动作 API（过账、结转、对账、算税…）    │
+│  └─ 中间件：会话认证 / 当前账套注入 / 审计日志                  │
+├─────────────────────────────────────────────────────────────┤
+│  业务逻辑层（app/modules/&lt;module&gt;/service.py）                 │
+│  ├─ 记账引擎（凭证生成/平衡校验/过账/红冲/结转）                │
+│  ├─ 自动记账规则引擎                                           │
+│  ├─ 申报计算引擎（增值税/所得税/印花税/附加…）                  │
+│  └─ 备份/计划任务                                              │
+├─────────────────────────────────────────────────────────────┤
+│  数据层：SQLAlchemy 2.0 ORM + BaseModel 约定                   │
+│  （模块注册表、domain 过滤解析、审计字段、book_id 隔离）         │
+├─────────────────────────────────────────────────────────────┤
+│  SQLite（WAL） + 附件文件系统 + OneDrive 备份目录               │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+<p><strong>关键设计原则：</strong></p>
+<ol><li><strong>通用 API + 模型注册表（Odoo ir.model 思想）</strong>：每个 SQLAlchemy 模型在启动时注册到 <code>ModelRegistry</code>（表名、显示名、字段元数据、权限、默认视图配置）。FastAPI 动态生成 <code>/api/v1/data/&lt;model&gt;</code> 的 CRUD 路由；前端 ListView/FormView 通过 <code>/api/v1/meta/&lt;model&gt;</code> 拿到字段与视图配置后渲染。<strong>新增一个业务实体的开发成本 ≈ 定义一个 SQLAlchemy 模型 + 一份视图配置 JSON。</strong></li><li><strong>账套隔离中间件（Odoo 多公司 record rules 思想）</strong>：所有带 <code>book_id</code> 的模型，查询自动注入 <code>book_id == 当前账套</code> 过滤；显式声明&quot;跨账套查询&quot;才能绕过（仅仪表盘总览、客户列表等白名单场景）。</li><li><strong>业务动作与 CRUD 分离</strong>：状态流转（过账、审核、对账、算税）一律走 <code>/api/v1/biz/*</code> 的显式动作端点，禁止前端直接改状态字段。</li></ol>
+<h3>5.2 项目目录结构（定稿）</h3>
+<pre><code>zhicai/                          # 项目根目录
+├── start.bat                    # Windows 一键启动
+├── requirements.txt             # fastapi uvicorn sqlalchemy alembic pydantic itsdangerous pyyaml httpx pytest
+├── config.yaml                  # 运行配置（首次自动生成）
+├── README.md                    # 含&quot;假设与决策记录&quot;小节
+├── alembic/                     # 数据库迁移
+├── app/
+│   ├── main.py                  # FastAPI 入口：装配中间件/路由/启动钩子
+│   ├── core/                    # 框架层（对标 Odoo odoo/ 核心包）
+│   │   ├── registry.py          # 模型注册表 + 视图配置加载
+│   │   ├── base_model.py        # SQLAlchemy BaseModel（审计字段/book_id 约定/rec_name）
+│   │   ├── domain.py            # Odoo 风格 domain 过滤语法解析 → SQLAlchemy 条件
+│   │   ├── security.py          # 会话认证 + 角色权限检查
+│   │   ├── book_context.py      # 当前账套上下文（中间件注入）
+│   │   ├── audit.py             # 通用审计日志（对标 Odoo mail.thread）
+│   │   ├── sequence.py          # 自动编号（对标 Odoo ir.sequence）
+│   │   └── scheduler.py         # 计划任务（备份/提醒，对标 Odoo ir.cron）
+│   ├── api/
+│   │   ├── meta_api.py          # /api/v1/meta/*
+│   │   ├── crud_api.py          # /api/v1/data/&lt;model&gt; 动态 CRUD
+│   │   └── deps.py              # 依赖注入（db session / 当前用户 / 当前账套）
+│   └── modules/                 # 业务模块（对标 Odoo addons/）
+│       ├── base/                # 用户/角色/设置/审计日志查看
+│       ├── res_partner/         # 客户档案（对标 Odoo contacts）
+│       ├── contract/            # 代账合同与收费
+│       ├── account/             # 记账核心（对标 Odoo account）
+│       ├── invoice/             # 进销项发票
+│       ├── bank/                # 银行流水与对账
+│       ├── auto_entry/          # 自动记账规则引擎
+│       ├── tax_decl/            # 申报台账与申报日历
+│       ├── foreign_trade/       # 外贸专区
+│       ├── payroll/             # 工资社保
+│       ├── documents/           # 文档中心
+│       ├── tasks/               # 任务与提醒
+│       └── board/               # 首页仪表盘
+│           每个模块目录约定：
+│           ├── __init__.py      # register() 返回模块描述符
+│           ├── models.py        # SQLAlchemy 模型
+│           ├── views.py         # 视图配置（Python dict，运行时即 JSON）
+│           ├── service.py       # 业务逻辑
+│           ├── router.py        # 业务动作 API
+│           ├── seed.py          # 种子数据（科目表模板/默认规则/征期表）
+│           └── tests/           # pytest 测试
+├── static/                      # 前端（无构建，直接静态服务）
+│   ├── index.html
+│   ├── vendor/                  # CDN 库的本地回退副本
+│   ├── css/app.css
+│   └── js/
+│       ├── app.js               # Vue 应用入口 + 路由（hash 路由）
+│       ├── api.js               # fetch 封装（错误统一处理）
+│       ├── components/          # 通用视图渲染器
+│       │   ├── ListView.js      # 列表视图（筛选/分组/排序/批量/分页）
+│       │   ├── FormView.js      # 表单视图（标签页/子表/活动日志）
+│       │   ├── KanbanView.js
+│       │   ├── CalendarView.js
+│       │   └── DashboardView.js
+│       ├── modules/             # 各模块的定制页面（凭证录入/对账/报表…）
+│       └── common/              # 工具函数
+├── data/                        # 运行时数据（gitignore）
+│   ├── zhicai.db
+│   └── attachments/
+└── docs/                        # 本项目书及后续文档</code></pre>
+<h3>5.3 核心机制详细设计</h3>
+<h4>5.3.1 模块注册表（对标 Odoo addons 装载机制）</h4>
+<pre><code># app/core/registry.py 关键接口（示意）
+@dataclass
+class ModuleDescriptor:
+    name: str                    # &#x27;account&#x27;
+    label: str                   # &#x27;记账&#x27;
+    depends: list[str]           # [&#x27;base&#x27;, &#x27;res_partner&#x27;]
+    menu: list[dict]             # 菜单项（含图标、路由、权限）
+    models: dict[str, type]      # 表名 → SQLAlchemy 模型类
+
+# 启动时：按依赖拓扑排序加载各模块的 register()，
+# 建立表（alembic 管演进）、注册模型元数据、收集菜单与视图配置。
+# 禁止循环依赖；依赖顺序：base → res_partner → account → 其他。</code></pre>
+<h4>5.3.2 BaseModel 约定（对标 Odoo models.Model 字段约定）</h4>
+<pre><code># app/core/base_model.py 所有业务模型继承此类
+class BaseModel:
+    id: Mapped[int] = primary_key()
+    create_uid / create_date / write_uid / write_date   # 审计四字段（Odoo 同名）
+    active: bool = True                                  # 归档而非删除（Odoo 约定）
+    # 声明 rec_name: str 类属性 —— 该字段值作为记录的显示名
+    # 声明 book_scoped: bool = True 且含 book_id 列的模型自动账套隔离</code></pre>
+<p><strong>删除策略</strong>：业务记录一律软删除（active=False 置归档），物理删除仅限测试环境。已过账（posted）凭证不可删除、不可修改（只能生成红冲凭证），此约束在 service 层强制。</p>
+<h4>5.3.3 Domain 过滤语法（对标 Odoo search domain）</h4>
+<p>前端筛选器统一产出、后端统一解析的元组语法：<code>[&quot;&amp;&quot;, [&quot;state&quot;, &quot;=&quot;, &quot;posted&quot;], [&quot;date&quot;, &quot;&gt;=&quot;, &quot;2026-01-01&quot;], [&quot;name&quot;, &quot;ilike&quot;, &quot;记-2026&quot;]]</code>。支持的运算符：<code>=, !=, &gt;, &gt;=, &lt;, &lt;=, ilike, in, between</code>；逻辑连接：<code>&amp;(and 默认), |(or), !(not)</code>。实现于 <code>core/domain.py</code>，必须带完整单测（这是所有列表查询的地基）。</p>
+<h4>5.3.4 自动编号（对标 Odoo ir.sequence）</h4>
+<p><code>ir_sequence</code> 表（code, prefix, padding, next_number, book_id）。凭证号规则：<code>{凭证字}-{YYYYMM}-{0001}</code>，按 账套+账簿+月份 重置计数；合同编号、任务编号同理。并发用 SQLite 单写者特性天然安全。</p>
+<h4>5.3.5 当前账套上下文（对标 Odoo 多公司切换）</h4>
+<ul><li>顶栏&quot;账套切换器&quot;：下拉列出全部启用客户（可搜索），选中写入会话 cookie。</li><li>中间件解析 cookie → <code>request.state.book_id</code>；CRUD API 自动注入过滤（5.1 原则 2）。</li><li>&quot;总览模式&quot;（book_id=all）：仅 dashboard、res_partner 列表、tasks、tax_decl 日历等白名单模型可用，由模块在视图配置中显式声明 <code>allow_cross_book: true</code>。</li></ul>
+<hr/>
+<h2>6. 数据模型设计（字段级定义）</h2>
+<p style="color:#6C757D; margin-left:12pt;">命名沿用 Odoo 习惯以便对照源码；类型标注用 SQLAlchemy 2.0 风格。所有表含 5.3.2 的审计字段与 active，下文不再重复列出。<strong>金额一律用 Decimal（SQLite 存 TEXT，精度 2 位小数；汇率 6 位）——禁止 float。</strong></p>
+<h3>6.1 模型总览与 Odoo 映射表</h3>
+<table><tr><th>本项目模型（表名）</th><th>对标 Odoo 模型</th><th>模块</th><th>一句话说明</th></tr><tr><td>res_users</td><td>res.users</td><td>base</td><td>登录用户</td></tr><tr><td>res_role</td><td>res.groups</td><td>base</td><td>角色（admin/accountant/viewer）</td></tr><tr><td>ir_config</td><td>ir.config_parameter</td><td>base</td><td>键值配置</td></tr><tr><td>ir_sequence</td><td>ir.sequence</td><td>base</td><td>自动编号</td></tr><tr><td>audit_log</td><td>mail.message(tracking)</td><td>base</td><td>字段级变更日志</td></tr><tr><td>note_message</td><td>mail.message(note)</td><td>base</td><td>记录备注/留言</td></tr><tr><td>res_book</td><td>res.company</td><td>res_partner</td><td><strong>客户账套</strong>（一家客户公司=一个账套）</td></tr><tr><td>res_partner</td><td>res.partner</td><td>res_partner</td><td>客户的往来单位（客户/供应商）</td></tr><tr><td>contract_agreement</td><td>—（Odoo subscription 借鉴）</td><td>contract</td><td>代账服务合同</td></tr><tr><td>contract_fee_item</td><td>—</td><td>contract</td><td>收费计划/收款记录</td></tr><tr><td>account_account</td><td>account.account</td><td>account</td><td>会计科目</td></tr><tr><td>account_journal</td><td>account.journal</td><td>account</td><td>账簿（凭证字）</td></tr><tr><td>account_move</td><td>account.move</td><td>account</td><td>记账凭证</td></tr><tr><td>account_move_line</td><td>account.move.line</td><td>account</td><td>凭证分录行</td></tr><tr><td>account_tax</td><td>account.tax</td><td>account</td><td>税率定义（进项/销项）</td></tr><tr><td>account_period_close</td><td>account.period.lock</td><td>account</td><td>期末结账/锁账</td></tr><tr><td>invoice_bill</td><td>account.move(in/out_invoice)</td><td>invoice</td><td>进项/销项发票登记</td></tr><tr><td>bank_statement</td><td>account.bank.statement</td><td>bank</td><td>银行对账单（导入批次）</td></tr><tr><td>bank_statement_line</td><td>account.bank.statement.line</td><td>bank</td><td>银行流水行</td></tr><tr><td>auto_entry_rule</td><td>account.reconcile.model</td><td>auto_entry</td><td>自动记账规则</td></tr><tr><td>auto_entry_log</td><td>—</td><td>auto_entry</td><td>规则执行日志</td></tr><tr><td>tax_decl_item</td><td>—</td><td>tax_decl</td><td>申报台账行（客户×税种×属期）</td></tr><tr><td>tax_calendar_rule</td><td>—</td><td>tax_decl</td><td>征期规则（生成台账）</td></tr><tr><td>ft_customs_decl</td><td>—</td><td>foreign_trade</td><td>报关单</td></tr><tr><td>ft_customs_line</td><td>—</td><td>foreign_trade</td><td>报关单商品行</td></tr><tr><td>ft_fx_receipt</td><td>—</td><td>foreign_trade</td><td>收汇/结汇记录</td></tr><tr><td>ft_export_refund</td><td>—</td><td>foreign_trade</td><td>出口退税台账</td></tr><tr><td>payroll_batch</td><td>hr.payslip.run</td><td>payroll</td><td>工资表批次</td></tr><tr><td>payroll_line</td><td>hr.payslip</td><td>payroll</td><td>员工月工资行</td></tr><tr><td>doc_document</td><td>documents.document</td><td>documents</td><td>文档登记与标签</td></tr><tr><td>task_task</td><td>project.task</td><td>tasks</td><td>任务/待办</td></tr><tr><td>board_card</td><td>board.board</td><td>board</td><td>仪表盘卡片配置</td></tr></table>
+<h3>6.2 base 模块</h3>
+<p><strong>res_users</strong>：id, login(唯一), name, password_hash(pbkdf2), role_id→res_role, active, last_login_at</p>
+<p><strong>res_role</strong>：id, code(admin/accountant/viewer), name, permissions(JSON：模型×读/写/删/动作 的矩阵)</p>
+<p><strong>ir_config</strong>：id, key(唯一), value(JSON)</p>
+<p><strong>ir_sequence</strong>：见 5.3.4</p>
+<p><strong>audit_log</strong>：id, model, record_id, user_id, action(create/write/post/…), changes(JSON 数组：<code>[{field, old, new}]</code>), created_at</p>
+<p><strong>note_message</strong>：id, model, record_id, user_id, body(Text), created_at</p>
+<h3>6.3 res_book —— 客户账套（本项目的心脏，对标 Odoo res.company）</h3>
+<p>一家代理的客户公司 = 一个账套。字段：</p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>code</td><td>str(20) 唯一</td><td>账套编号（如 C001）</td></tr><tr><td>name</td><td>str(200)</td><td>客户公司全称</td></tr><tr><td>short_name</td><td>str(50)</td><td>简称（顶栏切换器显示）</td></tr><tr><td>credit_no</td><td>str(32)</td><td>统一社会信用代码/税号</td></tr><tr><td>taxpayer_type</td><td>enum</td><td>general(一般纳税人) / small(小规模纳税人)</td></tr><tr><td>is_foreign_trade</td><td>bool</td><td>是否外贸客户（true 时解锁外贸专区菜单）</td></tr><tr><td>industry</td><td>str(50)</td><td>行业</td></tr><tr><td>legal_person / phone / address</td><td>str</td><td>法人、电话、注册地址</td></tr><tr><td>accounting_standard</td><td>enum</td><td>small(小企业会计准则) / enterprise(企业会计准则)</td></tr><tr><td>vat_period</td><td>enum</td><td>monthly / quarterly（增值税申报周期，按纳税人类型默认）</td></tr><tr><td>bookkeeping_start</td><td>date</td><td>接账起始月份（期间控制）</td></tr><tr><td>bank_accounts</td><td>JSON</td><td>开户行账户列表 <code>[{bank, account_no, alias}]</code></td></tr><tr><td>charge_status</td><td>enum</td><td>normal / paused / terminated（服务状态）</td></tr><tr><td>remark</td><td>text</td><td>备注</td></tr><tr><td>rec_name</td><td>→ short_name</td><td></td></tr></table>
+<p style="color:#6C757D; margin-left:12pt;"><strong>约束</strong>：新建账套时自动执行&quot;科目表初始化&quot;（从 seed 模板克隆整套科目，见 6.6）+ 生成默认账簿（4 个凭证字，见 6.7）+ 生成默认申报台账规则（见 7.9）。</p>
+<h3>6.4 res_partner —— 往来单位（对标 Odoo res.partner）</h3>
+<p>客户账套下的应收应付往来对象（该客户的客户和供应商）。字段：</p>
+<p>name(必填), partner_type(enum: customer/supplier/both), tax_no, is_company(bool, 默认 true), phone, address, bank_account, remark, book_id。</p>
+<p>列表默认按 name 排序；凭证录入时&quot;辅助核算-往来单位&quot;从此表联想选择。</p>
+<h3>6.5 account 模块 —— 记账核心（字段级定义）</h3>
+<p><strong>account_account（科目）</strong></p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>code</td><td>str(20)</td><td>科目编码（如 1001、220201），账套内唯一</td></tr><tr><td>name</td><td>str(100)</td><td>科目名称</td></tr><tr><td>account_type</td><td>enum</td><td>asset_current/asset_fixed/asset_depreciation/liability_current/liability_long/equity/revenue/cost/expense/other</td></tr><tr><td>direction</td><td>enum</td><td>debit(借方) / credit(贷方) 余额方向</td></tr><tr><td>is_leaf</td><td>bool</td><td>是否末级（仅末级可记账）</td></tr><tr><td>parent_id</td><td>FK→account_account</td><td>上级科目（构成科目树）</td></tr><tr><td>is_cash_flow</td><td>bool</td><td>是否现金流量表科目</td></tr><tr><td>辅助核算标志</td><td>auxiliary_flags</td><td>JSON：<code>{&quot;partner&quot;: true, &quot;department&quot;: false, &quot;project&quot;: false}</code></td></tr><tr><td>book_id</td><td>FK</td><td>科目表按账套隔离（对标 Odoo per-company CoA）</td></tr></table>
+<p><strong>account_journal（账簿/凭证字）</strong></p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>code</td><td>str(10)</td><td>记/收/付/转</td></tr><tr><td>name</td><td>str(50)</td><td>记账凭证/收款凭证/付款凭证/转账凭证</td></tr><tr><td>journal_type</td><td>enum</td><td>general/receipt/payment/transfer（对标 Odoo journal 类型思想）</td></tr><tr><td>book_id</td><td>FK</td><td>每账套默认生成 4 个</td></tr></table>
+<p><strong>account_move（记账凭证）</strong></p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>name</td><td>str(30)</td><td>凭证号（sequence 生成：<code>记-202609-0001</code>）</td></tr><tr><td>journal_id</td><td>FK→account_journal</td><td>账簿/凭证字</td></tr><tr><td>move_date</td><td>date</td><td>凭证日期</td></tr><tr><td>period</td><td>str(7)</td><td>所属期间 <code>YYYY-MM</code>（冗余存储，报表按此过滤）</td></tr><tr><td>state</td><td>enum</td><td>draft / posted / voided（红冲后状态）</td></tr><tr><td>source_type</td><td>enum</td><td>manual / auto_invoice / auto_bank / auto_payroll / closing / reversal（来源，自动记账可追溯）</td></tr><tr><td>attachment_count</td><td>int</td><td>附件张数（会计凭证要素）</td></tr><tr><td>remark</td><td>text</td><td>备查说明</td></tr><tr><td>reversed_move_id</td><td>FK→account_move</td><td>红冲目标凭证（红冲时生成新凭证反向分录并互链）</td></tr><tr><td>book_id</td><td>FK</td><td>—</td></tr></table>
+<p><strong>account_move_line（凭证分录行）</strong></p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>move_id</td><td>FK→account_move</td><td>所属凭证（级联删除，仅 draft）</td></tr><tr><td>line_no</td><td>int</td><td>行号</td></tr><tr><td>summary</td><td>str(200)</td><td><strong>摘要（必填，中国凭证要素）</strong></td></tr><tr><td>account_id</td><td>FK→account_account</td><td>科目（仅末级）</td></tr><tr><td>partner_id</td><td>FK→res_partner</td><td>往来单位（科目开了 partner 辅助核算时必填）</td></tr><tr><td>department / project</td><td>str(50)</td><td>其他辅助核算维度</td></tr><tr><td>debit</td><td>Decimal(18,2)</td><td>借方金额（≥0）</td></tr><tr><td>credit</td><td>Decimal(18,2)</td><td>贷方金额（≥0）</td></tr></table>
+<p><strong>service 层强制约束（对标 Odoo account.move 的 posting 约束）</strong>：</p>
+<ol><li>过账（post）前校验：<code>sum(debit) == sum(credit)</code> 且总额 &gt; 0；行数 ≥ 2；每行 debit/credit 互斥（不能同时 &gt;0）；摘要/科目必填；科目为末级；期间未锁（见 account_period_close）。</li><li>posted 后：整单只读，唯一出路是&quot;红冲&quot;（生成一张全反向凭证，两张凭证 state 标记互链）。</li><li>draft 可任意编辑/删除。</li></ol>
+<p><strong>account_period_close（期末结账）</strong>：id, book_id, period, closed(bool), closed_at, note。已锁期间禁止新增/修改凭证（跨期补录需先解锁并留审计）。</p>
+<p><strong>account_tax（税率定义）</strong>：id, book_id, name(如&quot;销项税 13%&quot;), tax_kind(enum: vat_output/vat_input/surtax/stamp/…), rate(Decimal(6,4)), active。供发票模块和申报计算引用。</p>
+<h3>6.6 科目表种子模板（小企业会计准则核心科目）</h3>
+<p>内置 <code>account/seed_coa_small.py</code>（小企业会计准则）与 <code>seed_coa_enterprise.py</code>（企业会计准则），新建账套时按 accounting_standard 克隆。小企业准则核心一级科目（编码遵循现行准则）：</p>
+<pre><code>资产类：1001 库存现金 / 1002 银行存款 / 1012 其他货币资金 / 1101 短期投资 /
+1121 应收票据 / 1122 应收账款 / 1123 预付账款 / 1131 应收股利 / 1132 应收利息 /
+1221 其他应收款 / 1231 坏账准备 / 1401 材料采购 / 1403 原材料 / 1405 库存商品 /
+1471 存货跌价准备 / 1501 长期债券投资 / 1601 固定资产 / 1602 累计折旧 /
+1604 在建工程 / 1605 工程物资 / 1606 固定资产清理 / 1701 无形资产 / 1702 累计摊销 /
+1801 长期待摊费用 / 1901 待处理财产损溢 / 1621 生产性生物资产（按需）
+负债类：2001 短期借款 / 2201 应付票据 / 2202 应付账款 / 2203 预收账款 /
+2211 应付职工薪酬 / 2221 应交税费 / 2231 应付利息 / 2232 应付利润 /
+2241 其他应付款 / 2401 递延收益 / 2501 长期借款 / 2701 长期应付款
+共同/权益类：3001 实收资本 / 3002 资本公积 / 3101 盈余公积 / 3103 本年利润 / 3104 利润分配
+成本类：5001 生产成本 / 5101 制造费用 / 5201 劳务成本
+损益类：6001 主营业务收入 / 6051 其他业务收入 / 6111 投资收益 / 6301 营业外收入 /
+6401 主营业务成本 / 6402 其他业务成本 / 6403 税金及附加 / 6601 销售费用 /
+6602 管理费用 / 6603 财务费用 / 6711 营业外支出 / 6801 所得税费用</code></pre>
+<p>关键二级科目随模板预置：2221.01 应交增值税(销项税额/进项税额/已交税金/转出未交增值税)、2221.02 未交增值税、2221.03 应交企业所得税、2221.04 应交个人所得税、2221.05 应交印花税、2221.06 应交城建税、2221.07 应交教育费附加、2221.08 应交地方教育附加、2221.10 应交出口退税；6601/6602/6603 下预置常用三级明细（办公费/差旅费/业务招待费/工资/社保/折旧/利息支出/手续费等）。<strong>科目表可在账套内自由增改。</strong></p>
+<h3>6.7 invoice 模块 —— 发票（中国化设计，对标 Odoo account.move 的发票形态）</h3>
+<p><strong>invoice_bill（发票登记）</strong>：一张表管进项+销项（对标 Odoo 用 move_type 区分发票形态的做法）。</p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>direction</td><td>enum</td><td>input(进项) / output(销项)</td></tr><tr><td>invoice_type</td><td>enum</td><td>special(专票) / normal(普票) / electronic(数电票) / other</td></tr><tr><td>invoice_code / invoice_no</td><td>str</td><td>发票代码 / 号码</td></tr><tr><td>invoice_date</td><td>date</td><td>开票日期</td></tr><tr><td>period</td><td>str(7)</td><td>所属期间</td></tr><tr><td>partner_name / partner_tax_no</td><td>str</td><td>开票方/受票方名称与税号（快照式存储）</td></tr><tr><td>partner_id</td><td>FK→res_partner</td><td>可选关联往来单位</td></tr><tr><td>goods_amount</td><td>Decimal</td><td>不含税金额</td></tr><tr><td>tax_amount</td><td>Decimal</td><td>税额</td></tr><tr><td>total_amount</td><td>Decimal</td><td>价税合计（= goods + tax，自动计算）</td></tr><tr><td>tax_rate</td><td>Decimal(6,4)</td><td>税率（13%/9%/6%/3%/5%/0%）</td></tr><tr><td>category</td><td>str(50)</td><td>费用类别（办公/差旅/房租/材料…，用于自动记账科目映射）</td></tr><tr><td>state</td><td>enum</td><td>registered / entry_generated(已生成凭证) / voided(作废/红冲)</td></tr><tr><td>move_id</td><td>FK→account_move</td><td>生成的凭证（追溯）</td></tr><tr><td>remark / attachment_id</td><td>—</td><td>备注、影像附件</td></tr><tr><td>book_id</td><td>FK</td><td>—</td></tr></table>
+<p>支持：手工录入、Excel/CSV 批量导入（提供标准模板下载）、数电票 XML 批量导入（M1 只做手工+Excel）。<strong>查重</strong>：同 book 内 invoice_code+invoice_no+invoice_date 重复时警告。</p>
+<h3>6.8 bank 模块 —— 银行流水与对账</h3>
+<p><strong>bank_statement（对账单批次）</strong>：id, book_id, bank_alias, account_no, period, imported_at, line_count, total_debit, total_credit。</p>
+<p><strong>bank_statement_line（流水行）</strong>：id, statement_id, trade_date, trade_no, counterpart_name, summary(交易摘要), debit(收入), credit(支出), balance(交易后余额), state(enum: unreconciled/reconciled), move_id(FK，生成的凭证)。</p>
+<p>对账工作台（7.8）从流水行发起&quot;生成凭证&quot;。</p>
+<h3>6.9 auto_entry 模块 —— 自动记账规则（对标 Odoo account.reconcile.model）</h3>
+<p><strong>auto_entry_rule</strong>：</p>
+<table><tr><th>字段</th><th>类型</th><th>说明</th></tr><tr><td>name</td><td>str</td><td>规则名，如&quot;销项专票→确认收入&quot;</td></tr><tr><td>trigger</td><td>enum</td><td>invoice_output / invoice_input / bank_line / payroll</td></tr><tr><td>match_condition</td><td>JSON</td><td>过滤条件（对发票：<code>{&quot;direction&quot;:&quot;output&quot;,&quot;invoice_type&quot;:&quot;special&quot;,&quot;tax_rate&quot;:&quot;0.13&quot;}</code>；对流水：<code>{&quot;summary_ilike&quot;:&quot;工资&quot;,&quot;debit_gt&quot;:0}</code> 等）</td></tr><tr><td>journal_code</td><td>str</td><td>生成凭证的凭证字（默认&quot;记&quot;）</td></tr><tr><td>line_template</td><td>JSON</td><td>分录模板（见下方）</td></tr><tr><td>priority</td><td>int</td><td>多规则匹配时的优先级（小者优先）</td></tr><tr><td>enabled</td><td>bool</td><td>启用开关</td></tr></table>
+<p><strong>line_template 结构</strong>（支持变量替换）：</p>
+<pre><code>[
+  {&quot;side&quot;: &quot;debit&quot;,  &quot;account&quot;: &quot;1122 应收账款&quot;,      &quot;summary&quot;: &quot;应收 {partner_name}&quot;, &quot;amount&quot;: &quot;{total_amount}&quot;},
+  {&quot;side&quot;: &quot;debit&quot;,  &quot;account&quot;: &quot;2221.01.02 进项税额&quot;, &quot;summary&quot;: &quot;进项税 {tax_amount}&quot;, &quot;amount&quot;: &quot;{tax_amount}&quot;},
+  {&quot;side&quot;: &quot;credit&quot;, &quot;account&quot;: &quot;6001 主营业务收入&quot;,   &quot;summary&quot;: &quot;销售 {goods_amount}&quot;, &quot;amount&quot;: &quot;{goods_amount}&quot;}
+]</code></pre>
+<p>占位符来源：源单据字段值（发票/流水/工资行）；<code>{amount}</code> 支持表达式（如 <code>={goods_amount}*0.13</code>）。<strong>引擎必须保证生成凭证借贷平衡，不平衡则整单拒绝并写日志。</strong></p>
+<p><strong>auto_entry_log</strong>：rule_id, source_model, source_id, result(ok/failed), move_id, message, created_at。</p>
+<p>内置种子规则（可停用/修改）：</p>
+<ol><li>销项发票（任意类型）→ 借 应收账款{价税合计} / 贷 主营业务收入{不含税} + 贷 销项税额{税额}</li><li>进项发票按 category 映射 → 借 费用科目{不含税} + 借 进项税额{税额} / 贷 应付账款{价税合计}（category→科目映射表存 ir_config，可维护）</li><li>银行流水&quot;摘要含&#x27;工资&#x27;且贷方支出&quot; → 借 应付职工薪酬 / 贷 银行存款</li><li>银行流水&quot;摘要含&#x27;税&#x27;且贷方支出&quot; → 借 应交税费-未交增值税 / 贷 银行存款</li><li>银行流水&quot;借方收入&quot; → 借 银行存款 / 贷 应收账款（配合核销）</li><li>工资批次审核后 → 计提与发放两张凭证模板</li></ol>
+<h3>6.10 tax_decl 模块 —— 申报台账</h3>
+<p><strong>tax_calendar_rule（征期规则）</strong>：id, tax_kind(enum: vat/cit quarterly/cit annual/iit/surtax/stamp/…), period_type(enum: monthly/quarterly/yearly), deadline_rule(str, 如 &quot;next_month_15&quot; / &quot;quarter_next_month_15&quot; / &quot;annual_0531&quot;), applies_to(JSON 过滤：<code>{&quot;taxpayer_type&quot;:&quot;small&quot;}</code>), enabled。</p>
+<p>种子规则：</p>
+<ul><li>vat：小规模→季度，次季首月 15 日截止；一般纳税人→月度，次月 15 日</li><li>cit 季度预缴：次季首月 15 日；cit 年度汇算：次年 5 月 31 日</li><li>iit（个税）：次月 15 日</li><li>印花税：按季（季首 15 日）——按用户实际业务，税目仅买卖合同 0.3‰</li><li>附加税（城建 7%/5%/1%、教育附加 3%、地方附加 2%）：随增值税</li></ul>
+<p><strong>tax_decl_item（申报台账行 —— 本模块核心实体）</strong>：id, book_id, tax_kind, period, due_date, state(enum: pending/preparing/submitted/paid/done/exempt), computed_amount(Decimal, 系统计算应纳额), declared_amount(实缴额), paid_date, calc_snapshot(JSON：计算底稿——取数口径、公式、明细), remark, source(&quot;auto&quot;由规则批量生成/&quot;manual&quot;手工补)。</p>
+<p><strong>生成逻辑</strong>：计划任务每月 1 日（及季度/年度节点）扫描全部启用账套 × 适用征期规则 → 批量生成当期 tax_decl_item；已存在的跳过（幂等）。</p>
+<h3>6.11 foreign_trade 模块</h3>
+<p><strong>ft_customs_decl（报关单）</strong>：id, book_id, decl_no(报关单号), export_date, trade_mode(enum: FOB/CIF/CFR…), currency, fx_rate(Decimal(10,4)), usd_amount, cny_total(人民币总额), customer_abroad(境外客户), goods_count(件数), remark。</p>
+<p><strong>ft_customs_line（商品行）</strong>：id, decl_id, hs_code(海关编码), goods_name, qty, unit, unit_price, amount。</p>
+<p><strong>ft_fx_receipt（收汇/结汇）</strong>：id, book_id, decl_id(FK 可空), receipt_date, currency, amount, fx_rate, cny_amount, kind(enum: receipt/verification 待核查/settlement 结汇), bank_fee, remark。</p>
+<p><strong>ft_export_refund（出口退税台账）</strong>：id, book_id, decl_id, period, kind(enum: 免抵退/免退), status(enum: collecting资料收集中/submitted已申报/approved已审批/received已到账), refund_amount, received_date, remark。</p>
+<h3>6.12 payroll 模块</h3>
+<p><strong>payroll_batch（工资批次）</strong>：id, book_id, period, state(draft/confirmed/paid), employee_count, total_gross, total_net, social_base(社保基数汇总), remark。</p>
+<p><strong>payroll_line（员工行）</strong>：id, batch_id, employee_name, id_card_tail(证件后四位), gross_salary, social_employee(个人社保), social_employer(单位社保), fund_employer(单位公积金), iit(个税), net_salary(实发, 自动计算), remark。</p>
+<p style="color:#6C757D; margin-left:12pt;">个税按月度累计预扣法简化计算（累计预扣预缴公式按 2026 现行个税法税率表实现，税率表存 ir_config 可更新），MVP 允许手工覆盖计算值。</p>
+<h3>6.13 contract / documents / tasks / board 模块</h3>
+<p><strong>contract_agreement（代账合同）</strong>：id, book_id, contract_no, sign_date, start_date, end_date, service_scope(JSON 多选：记账/报税/工商年检/出口退税…), fee_type(enum: monthly/quarterly/annual), fee_amount, payer_name, state(enum: active/expired/terminated), remark。</p>
+<p><strong>contract_fee_item（收费计划）</strong>：id, agreement_id, period, amount, due_date, state(enum: unpaid/invoiced/paid/overdue), paid_date, paid_amount, invoice_no。</p>
+<p><strong>doc_document（文档登记）</strong>：id, book_id, name, doc_type(enum: 营业执照/合同/申报回执/银行回单/报关单/其他), tag_list(JSON), attachment_id, source_model/source_id(与业务单据关联), remark。</p>
+<p><strong>task_task（任务）</strong>：id, book_id(可空=全局任务), title, description, due_date, priority(enum: low/normal/high/urgent), state(enum: todo/doing/done/cancelled), assignee_id(预留), source_model/source_id, reminder_sent(bool)。</p>
+<p><strong>board_card（仪表盘卡片配置）</strong>：id, card_key(enum: 见 7.2), position(int), config(JSON), enabled。</p>
+<h3>6.14 ER 关系核心链（一图流）</h3>
+<pre><code>res_book 1 ─── N account_account（科目表按账套隔离）
+res_book 1 ─── N account_journal
+res_book 1 ─── N account_move 1 ─── N account_move_line N ─── 1 account_account
+                                    account_move_line N ─── 1 res_partner
+invoice_bill N ─── 1 account_move（发票→生成的凭证）
+bank_statement 1 ─── N bank_statement_line N ─── 1 account_move
+tax_decl_item N ─── 1 res_book（台账按账套）
+ft_customs_decl 1 ─── N ft_customs_line；ft_fx_receipt N ─── 1 ft_customs_decl
+payroll_batch 1 ─── N payroll_line
+contract_agreement 1 ─── N contract_fee_item；contract_agreement N ─── 1 res_book
+所有业务表 N ─── 1 res_book（除全局表）</code></pre>
+<hr/>
+<h2>7. 功能模块规格（界面行为与验收口径）</h2>
+<p style="color:#6C757D; margin-left:12pt;">本章按模块给出功能点、交互与<strong>验收标准（DoD）</strong>。通用规则：所有列表视图支持筛选/排序/分页/导出 CSV；所有表单有必填校验与脏数据离开提示；所有删除为归档（active=False）。</p>
+<h3>7.1 登录与全局框架（AppShell）</h3>
+<ul><li>首次运行向导：创建 admin 账号 → 设置数据目录与 OneDrive 备份目录 → 完成进入。</li><li>登录页：账号 + 密码；登录后进入工作台。</li><li><strong>左侧导航栏</strong>（借鉴 Odoo 应用菜单，可折叠）：分组显示模块菜单（工作台 / 客户与合同 / 记账 / 发票与银行 / 税务申报 / 外贸专区 / 工资 / 任务与文档 / 系统）。菜单项由模块注册表驱动——装了什么模块就显示什么（Odoo 同款机制）。外贸专区仅当至少一个账套 <code>is_foreign_trade=true</code> 时显示。</li><li><strong>顶栏</strong>：左侧当前页面标题面包屑；中部全局搜索（输入客户简称/凭证号/发票号，返回分类结果跳转）；右侧<strong>账套切换器</strong>（下拉搜索 100 家客户）+ 用户菜单（修改密码/退出）。</li><li>账套切换后：左侧模块不变，主区域数据全部切换到该账套；总览模式下仪表盘等白名单页面跨账套聚合。</li><li><strong>DoD</strong>：登录/登出/会话过期拦截（跳登录页）；账套切换 1 秒内完成；全局搜索回车直达。</li></ul>
+<h3>7.2 首页工作台（Dashboard，借鉴 Odoo board）</h3>
+<p>仪表盘卡片（可配置显示与顺序）：</p>
+<table><tr><th>卡片</th><th>内容</th></tr><tr><td>本月概览</td><td>服务客户数（active 账套数）、本月待过账凭证数、本月已过账凭证数、本月新发票数</td></tr><tr><td>申报日历红牌</td><td>未来 7 天到期且 state∈{pending,preparing} 的申报项列表（客户×税种×截止日），点击直达</td></tr><tr><td>逾期预警</td><td>已逾期未申报、逾期未收代账费（contract_fee_item overdue）</td></tr><tr><td>待办任务</td><td>state∈{todo,doing} 的任务前 10 条</td></tr><tr><td>收款月历</td><td>本月应收代账费合计/已收/未收</td></tr><tr><td>各客户进度</td><td>表格：客户 × 本月（收票/凭证/申报/收费）四状态灯 —— 一屏看清 100 家谁没做完</td></tr></table>
+<ul><li><strong>DoD</strong>：仪表盘总览模式跨账套聚合正确；每张卡片可点击穿透到对应列表页。</li></ul>
+<h3>7.3 客户管理（res_book + res_partner）</h3>
+<ul><li>客户列表（总览模式）：编号/简称/税号/纳税人类型/服务状态/外贸标记/合同到期日；支持按纳税人类型、状态筛选；行点击进入该客户详情页（自动切换账套上下文）。</li><li>客户详情页（FormView 标签页）：基本信息 / 科目表 / 账簿 / 申报设置 / 合同收费 / 往来单位 / 文档 / 活动日志。</li><li>新建客户向导：填基本信息 → 选会计准则 → 一键初始化（克隆科目模板 + 建账簿 + 建征期规则 + 生成当年台账）。</li><li>停用客户：charge_status→terminated 后从切换器隐藏，数据保留。</li><li><strong>DoD</strong>：新建客户后科目表完整（小企业准则一级+预置二级科目齐全，科目树可展开）；重复税号拦截；100 家客户时列表加载 &lt; 500ms。</li></ul>
+<h3>7.4 合同与收费管理（contract）</h3>
+<ul><li>合同列表+表单：基本要素、服务范围多选、收费周期与金额；到期前 30 天自动生成&quot;续约提醒任务&quot;。</li><li>收费计划：按合同周期自动生成各期 contract_fee_item（幂等，可手动补）；状态流转 unpaid→invoiced→paid；逾期自动标 overdue 并生成催收任务。</li><li>收款登记：批量勾选多客户多期一起标记收款（一键场景：月末统一收 60 家）。</li><li>报表：应收统计（按客户/按月份）；本年度已收合计。</li><li><strong>DoD</strong>：自动生成收费计划不重复不遗漏；逾期判定（today &gt; due_date 且 unpaid）正确。</li></ul>
+<h3>7.5 记账核心（account）—— 最重模块</h3>
+<p><strong>凭证列表</strong>：默认按期间倒序；筛选（期间/凭证字/状态/来源/摘要关键词/科目）；批量操作（批量过账/批量打印）。行内快览（点开展开分录，不进详情页）。</p>
+<p><strong>凭证录入页（定制页面，不用通用 FormView）</strong>：</p>
+<ul><li>表头：凭证字（下拉）、日期、附件数；</li><li>分录表格（类 Excel 连续录入）：摘要（支持上一行摘要按 <code>//</code> 复制）、科目（编码/名称拼音联想，仅末级）、辅助核算（往来单位等按科目配置动态出现）、借方/贷方金额（输入一侧自动清另一侧）；回车自动加行；</li><li>底栏实时显示&quot;借方合计 / 贷方合计 / 差额&quot;，不平衡时【保存】可用但【保存并过账】禁用（红色差额提示）；</li><li>常用凭证模板：任意凭证可存为模板，模板一键带出分录（含科目不含金额）。</li></ul>
+<p><strong>过账/红冲</strong>：过账动作执行 6.5 全部约束校验；红冲生成反向凭证（每行借贷互换、摘要前加&quot;红冲：&quot;），两张凭证互链且原凭证 state→voided。</p>
+<p><strong>期末结转（一键）</strong>：选择期间 → 系统将损益类科目（6001/6051/6111/6301/6401/6402/6403/6601/6602/6603/6711/6801）余额结转到 3103 本年利润，生成结转凭证（source_type=closing）；重复执行同期间提示已结转。结账（period close）后期间锁定。</p>
+<p><strong>账簿查询</strong>：</p>
+<ul><li>总账：科目×期间的汇总（期初/本期借/本期贷/期末）；</li><li>明细账：科目下按凭证展开（日期/凭证号/摘要/借/贷/方向余额）；</li><li>科目余额表：全科目期初/发生/期末，支持期间区间，导出 Excel/CSV；</li><li>凭证连打：按期间连续打印凭证（打印样式：标准记账凭证版式，A4 两张/页）。</li></ul>
+<p><strong>财务报表</strong>：资产负债表、利润表（小企业准则格式，公式取数映射存 <code>ir_config</code>，允许用户微调公式）；报表数字与账联查（点数字弹出构成明细）。</p>
+<ul><li><strong>DoD</strong>：① 每张凭证过账校验全通过（单测覆盖每个约束分支）；② 结转后损益科目余额为 0、本年利润正确；③ 资产负债表&quot;资产=负债+权益&quot;平衡校验内置（不平则报表顶部红条警示并显示差额）；④ 利润表净利润 = 本年利润科目发生额。</li></ul>
+<h3>7.6 发票管理（invoice）</h3>
+<ul><li>进项/销项两个列表页（Tab 切换）；表单录入（自动算价税合计）；发票影像上传（拍照/扫描件，进 doc_documents）。</li><li>Excel 批量导入：模板下载 → 导入 → 预览校验（错误行标红说明）→ 确认入库；查重（同账套代码+号码+日期）。</li><li>月末视图：某期间进项合计/销项合计/税额合计（申报底稿取数来源）。</li><li><strong>DoD</strong>：导入 500 行 &lt; 5 秒；重复发票拦截；价税合计自动计算精度正确（Decimal）。</li></ul>
+<h3>7.7 自动记账引擎（auto_entry）—— 核心卖点</h3>
+<ul><li>规则管理页：规则列表（启停/优先级/编辑）。</li><li><strong>批量执行工作台</strong>：选账套+期间 → 列出所有未生成凭证的发票/流水 → 逐条匹配规则（显示&quot;将执行的规则+预览分录&quot;）→ 勾选执行 → 批量生成 draft 凭证 + 执行日志。匹配不到规则的留在&quot;待人工&quot;清单。</li><li>幂等：已 entry_generated 的发票不再生成；失败整单回滚并记 auto_entry_log。</li><li><strong>DoD</strong>：种子规则全链路测试——给定 3 张销项票+2 张进项票+3 条流水，批量执行后生成 8 张平衡 draft 凭证且金额科目全部正确；同批重复执行不重复生成。</li></ul>
+<h3>7.8 银行对账工作台（bank）</h3>
+<ul><li>流水导入（Excel/CSV：银行导出格式适配常见工行/建行/招行模板，字段映射可配置存 ir_config）。</li><li>对账工作台：左右分栏——左：流水列表（未对账优先）；右：选中流水的凭证预生成区（命中规则自动带出，可改科目）；一键&quot;生成凭证并标记已对账&quot;。</li><li>按月对账汇总：期初余额 + 收入 - 支出 = 期末余额（与银行对账单核对）。</li><li><strong>DoD</strong>：导入含表头乱码（GBK/UTF-8 自动识别）容错；生成凭证后流水状态联动。</li></ul>
+<h3>7.9 税务申报台账与日历（tax_decl）—— 防&quot;漏报&quot;的核心</h3>
+<ul><li><strong>申报日历页</strong>（总览模式）：月历视图 + 列表视图切换。列表按月份展示：客户 × 税种 × 属期 × 截止日 × 状态（颜色：pending 灰 / preparing 蓝 / submitted 橙 / paid 绿 / exempt 白 / <strong>逾期红</strong>）。</li><li>台账行操作：①&quot;计算&quot;——打开申报底稿抽屉：显示系统计算的应纳税额与计算过程快照（例：增值税=销项合计-进项合计+上期留抵，取数自发票与台账，过程可追溯）；②&quot;标记已申报&quot;（填实缴额）；③&quot;标记已缴款&quot;（填缴款日期）；④&quot;免税/零申报&quot;（记录原因）。</li><li>官网直达：每税种提供电子税务局/自然人电子税务局等<strong>外链按钮</strong>（链接存 ir_config，用户可维护）——系统不做自动申报，只做导航与登记。</li><li>增值税计算底稿（M4 范围）：一般纳税人=当期销项-当期进项-上期留抵；小规模=含税收入/1.03×3%（季度 30 万免征判断可配置，默认按现行政策参数存 ir_config）。附加税=实缴增值税×税率。印花税=买卖合同计税依据×0.3‰（计税依据默认取当期购销合计，可手改）。企业所得税、个税底稿仅出取数汇总（营业收入/成本/利润总额），计算以用户在税局端为准。</li><li><strong>DoD</strong>：征期规则批量生成台账幂等且覆盖 100 账套 &lt; 10 秒；逾期自动标红；每笔计算底稿可追溯取数来源（数字穿透到发票/凭证列表）。</li></ul>
+<h3>7.10 外贸专区（foreign_trade，仅外贸账套可见）</h3>
+<ul><li>报关单台账：列表+表单（含商品行子表）；单一窗口导出的报关明细 CSV 导入。</li><li>收汇台账：登记收汇/结汇，关联报关单（一笔报关多次收汇）。</li><li>出口退税台账：状态流转收集→申报→审批→到账。</li><li>平台链接中心：单一窗口 / 电子口岸 / 国家外汇管理局数字外管 / 电子税务局出口退税模块的直达链接 + 用户可编辑的操作备忘（文本）。</li><li><strong>DoD</strong>：非外贸账套看不到外贸菜单；报关单-收汇关联正确显示未收汇差额。</li></ul>
+<h3>7.11 工资社保（payroll）</h3>
+<ul><li>按月建批次：复制上月员工行（金额可改）→ 计算个税（累计预扣法，税率表可配置）→ 确认 → 一键生成两张凭证（计提：借 管理费用-工资 / 贷 应付职工薪酬；发放：借 应付职工薪酬 / 贷 银行存款，个税代扣进 应交税费-应交个人所得税）。</li><li>社保公积金台账：基数、单位/个人部分，随批次登记。</li><li><strong>DoD</strong>：个税计算单测（3 档税率边界值）；批次确认后凭证自动生成且平衡。</li></ul>
+<h3>7.12 文档中心（documents）</h3>
+<ul><li>全局文档列表（跨账套）：按客户/类型/标签/年份筛选；拖拽上传（多文件）；图片/PDF 在线预览。</li><li>业务单据挂接：发票、凭证、报关单表单内直接上传附件（自动登记到文档中心并双向关联）。</li><li><strong>DoD</strong>：上传 10MB PDF 正常；从发票页上传后文档中心可反查来源单据。</li></ul>
+<h3>7.13 数据备份与计划任务（core/scheduler + base 设置页）</h3>
+<ul><li><strong>自动备份</strong>：每日首次启动系统时 + 每日固定时刻（可配）执行：<code>PRAGMA integrity_check</code> → 备份 SQLite（VACUUM INTO）到 OneDrive 目录 <code>zhicai_backup/zhicai_YYYYMMDD_HHMM.db</code> → 保留最近 90 份自动清理 → 写备份日志（时间/大小/结果）。</li><li>手动&quot;立即备份&quot;按钮（系统设置页）+ 备份历史列表 + &quot;从备份恢复&quot;引导（说明文档式，不自动执行覆盖）。</li><li>计划任务框架（对标 Odoo ir.cron）：任务注册（backup / decl_generate 台账生成 / fee_overdue 逾期扫描 / task_reminder 到期提醒），每日 00:05 服务器启动后补跑错过的任务；执行留痕。</li><li><strong>DoD</strong>：备份文件可用（恢复到临时库校验通过）；90 份滚动清理正确；日志可查。</li></ul>
+<h3>7.14 系统设置（base）</h3>
+<ul><li>用户管理（预留多用户）、修改密码；</li><li>参数配置（ir_config 可视化编辑：个税税率表、免征额参数、科目映射表、银行导入模板映射、官网链接等）；</li><li>审计日志查看（按用户/模型/时间筛选）；</li><li>数据维护：数据库健康检查、备份入口、科目模板管理、导出全量数据（CSV 包）。</li></ul>
+<hr/>
+<h2>8. WebUI 设计规范（借鉴 Odoo 18 的界面范式）</h2>
+<h3>8.1 整体布局</h3>
+<pre><code>┌──────────┬──────────────────────────────────────────────┐
+│          │  顶栏：面包屑 …… [全局搜索] [账套:深圳XX贸易] [👤] │
+│  左侧    ├──────────────────────────────────────────────┤
+│  导航栏   │                                              │
+│  (折叠↔  │              主内容区                          │
+│  展开,    │   （列表 / 表单 / 看板 / 日历 / 报表 / 工作台）  │
+│  220px↔  │                                              │
+│  64px)   │                                              │
+└──────────┴──────────────────────────────────────────────┘</code></pre>
+<h3>8.2 通用视图组件行为（全部由视图配置驱动）</h3>
+<p><strong>ListView（列表）</strong>：</p>
+<ul><li>工具栏：新建 / 导入 / 导出 CSV / 筛选器（chips 式，可组合）/ 分组下拉（按任意字段分组折叠）/ 搜索框；</li><li>表格：列头点击排序（升/降图标）；首列多选框；底部&quot;80 条/页&quot;分页 + 总数；</li><li>行操作：悬浮&quot;打开/编辑&quot;按钮；选中多条时顶部出现批量操作条；</li><li>空态：插画 + &quot;暂无数据，点击新建&quot;。</li></ul>
+<p><strong>FormView（表单）</strong>：</p>
+<ul><li>页头：图标 + 记录显示名（rec_name）+ <strong>状态徽章</strong>（彩色圆点：draft 灰/posted 绿/逾期 红 等）+ 右侧主操作按钮组（保存/过账/红冲/打印——按 state 动态显示）；</li><li>内容：标签页分组字段；两列栅格布局；One2many 子表（表格内嵌编辑）；</li><li>页底：<strong>活动日志面板</strong>（chatter：时间线显示字段变更[旧值→新值]与备注留言，可添加备注）。</li></ul>
+<p><strong>KanbanView（看板）</strong>：按 state 列分栏，卡片显示标题+关键字段+头像（客户 initials），支持拖拽换列（改 state）。用于：任务、退税台账、收费状态。</p>
+<p><strong>CalendarView（日历）</strong>：月视图为主，事件=申报截止日/任务到期日，颜色按税种/优先级。</p>
+<p><strong>DashboardView</strong>：卡片栅格（2/4 列自适应），每卡片标题+数字/图表/列表三种形态。</p>
+<h3>8.3 交互细节（对齐 Odoo 手感）</h3>
+<ul><li>所有写操作即时 toast 反馈（成功绿/失败红，失败信息可展开技术详情）；</li><li>危险操作（红冲、结账、停用客户）二次确认弹窗，确认文案说明后果；</li><li>凭证/发票等数字字段千分位显示，录入时仅数字；</li><li>全键盘：列表 <code>n</code>=新建、<code>/</code>=聚焦搜索、<code>Esc</code>=关闭弹窗；凭证录入页 Tab/Enter 流转（类 Excel）;</li><li>加载态：路由切换显示顶部进度条；列表数据骨架屏；</li><li>响应式：≥1200px 标准布局；&lt;900px 左侧导航自动收起为图标（手机浏览器可看仪表盘/日历/任务）。</li></ul>
+<h3>8.4 视觉规范</h3>
+<table><tr><th>项</th><th>值</th></tr><tr><td>主色</td><td>Odoo 紫 <code>#714B67</code>（导航栏底色、主按钮、选中态）</td></tr><tr><td>辅助色</td><td>成功 <code>#28A745</code> / 警告 <code>#F59E0B</code> / 危险 <code>#DC3545</code> / 信息 <code>#17A2B8</code></td></tr><tr><td>背景</td><td>页面 <code>#F9F9F9</code>，卡片白底 <code>#FFFFFF</code> + 1px 边框 <code>#E5E5E5</code> + 微圆角 4px</td></tr><tr><td>文字</td><td>主 <code>#212529</code>，次要 <code>#6C757D</code></td></tr><tr><td>字体</td><td>系统栈：<code>&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif</code>；正文 14px，表格 13px</td></tr><tr><td>状态徽章</td><td>圆点 8px + 文字，颜色映射统一放 <code>js/common/states.js</code></td></tr></table>
+<p style="color:#6C757D; margin-left:12pt;">浅色主题为唯一主题（单用户本机使用，不做暗色模式）。</p>
+<hr/>
+<h2>9. 非功能需求</h2>
+<table><tr><th>类别</th><th>要求</th></tr><tr><td>性能</td><td>列表接口 P95 &lt; 300ms（10 万行数据量下）；仪表盘 &lt; 1s；启动（含依赖检查）&lt; 10s</td></tr><tr><td>容量</td><td>100 账套 × 10 年数据（见 2.3）无 degradation；附件目录 10GB+</td></tr><tr><td>可靠性</td><td>所有业务动作事务化（失败回滚）；SQLite WAL；每日自动备份（7.13）；断电后重启自检</td></tr><tr><td>安全</td><td>密码 pbkdf2 存储；会话签名 cookie（HttpOnly）；仅监听 127.0.0.1（默认不出本机）；操作全审计</td></tr><tr><td>可维护性</td><td>模块高内聚低耦合（模块间只通过 service 层 import 依赖模块的 service，禁止跨模块直查表）；Alembic 迁移每次表结构变更必提交</td></tr><tr><td>可测试性</td><td>核心逻辑（domain 解析/凭证校验/结转/算税/规则引擎）单测覆盖率 ≥ 80%；每模块含 API 集成测试</td></tr><tr><td>兼容</td><td>Chrome/Edge 最新版（本机场景）；Windows 10/11</td></tr></table>
+<hr/>
+<h2>10. 开发路线图（里程碑与验收）</h2>
+<p style="color:#6C757D; margin-left:12pt;">每个里程碑 = 一次 Codex 会话可完成的任务包。<strong>必须按序交付</strong>。每个里程碑的 DoD 未全部达成不得开始下一个。</p>
+<h3>M1 — 基座与客户管理（把&quot;Odoo 式框架&quot;立起来）</h3>
+<p><strong>范围</strong>：项目骨架（5.2 目录结构全量建立）、FastAPI 启动、SQLite + Alembic、登录/会话、模块注册表、domain 解析器、动态 CRUD API + meta API、前端 AppShell（导航/顶栏/账套切换器/全局搜索）、ListView + FormView 通用渲染器、base 模块（用户/角色/配置/审计/note）、res_book 客户管理（新建向导含科目初始化）+ res_partner、种子数据（admin 账号、示例账套 2 个）。</p>
+<p><strong>验收</strong>：① <code>start.bat</code> 一键起服务并自动开浏览器；② 新建客户向导产出完整科目表+账簿；③ 客户列表筛选/搜索/排序可用；④ 任意表单保存后活动日志记录字段变更；⑤ domain 单测全绿；⑥ pytest 覆盖 CRUD API。</p>
+<h3>M2 — 记账核心（account 模块全量）</h3>
+<p><strong>范围</strong>：account 全模型、凭证录入定制页（Excel 式录入+模板）、过账/红冲、期末结转、总账/明细账/科目余额表、资产负债表/利润表、凭证打印、期间锁账。</p>
+<p><strong>验收</strong>：7.5 的 DoD 全部达成 + 凭证录入页支持 <code>//</code> 摘要复制与科目联想。</p>
+<h3>M3 — 发票与自动记账（invoice + auto_entry + bank 导入）</h3>
+<p><strong>范围</strong>：invoice_bill 全量（含 Excel 导入/查重/影像挂接）、auto_entry 规则引擎 + 批量执行工作台 + 种子规则、bank 流水导入 + 对账工作台。</p>
+<p><strong>验收</strong>：7.6/7.7/7.8 的 DoD 全部达成。</p>
+<h3>M4 — 税务申报（tax_decl）</h3>
+<p><strong>范围</strong>：征期规则 + 台账批量生成、申报日历（日历/列表双视图）、计算底稿（增值税/附加/印花税/所得税取数汇总）、状态流转、官网链接中心。</p>
+<p><strong>验收</strong>：7.9 的 DoD 全部达成；100 账套台账生成压力测试通过。</p>
+<h3>M5 — 合同收费与任务（contract + tasks + board）</h3>
+<p><strong>范围</strong>：合同/收费计划/收款登记/应收报表、任务管理（看板）、首页仪表盘全部卡片、逾期/到期扫描计划任务。</p>
+<p><strong>验收</strong>：7.2/7.4 DoD 达成；仪表盘数字与明细穿透一致。</p>
+<h3>M6 — 外贸与工资（foreign_trade + payroll + documents）</h3>
+<p><strong>范围</strong>：外贸三台账 + 平台链接中心、工资批次/个税/凭证生成、文档中心（上传/预览/挂接）。</p>
+<p><strong>验收</strong>：7.10/7.11/7.12 DoD 达成。</p>
+<h3>M7 — 加固与收尾（backup + 设置 + 性能）</h3>
+<p><strong>范围</strong>：自动备份/备份历史/恢复引导、计划任务框架完善、系统设置页全量、性能优化（索引核查/慢查询）、README 终稿（含运维手册：备份恢复/常见问题/数据目录说明）。</p>
+<p><strong>验收</strong>：7.13/7.14 DoD 达成；2.3 数据量模拟压测达标（脚本造 10 年数据跑报表）。</p>
+<hr/>
+<h2>11. Codex 开发指引</h2>
+<h3>11.1 工程规范</h3>
+<ul><li>Python：类型标注全覆盖；service 层抛业务异常（自定义 <code>BizError(code, message)</code>），API 层统一转 HTTP 400/409；禁止在路由层写业务逻辑。</li><li>前端：ES Modules，无构建；组件文件 = 单文件 Vue 组件（<code>Vue.defineComponent</code> + 模板字符串）；通用渲染器与业务定制页分离（<code>components/</code> vs <code>modules/</code>）。</li><li>Git：里程碑一次或多次提交均可，提交信息格式 <code>M2: 凭证录入页与过账校验</code>。</li><li>时间处理：业务日期一律 naive date（字符串 <code>YYYY-MM-DD</code> 出入参）；金额 Decimal，JSON 序列化为字符串。</li><li>错误信息面向用户可读（中文），日志面向开发者（含堆栈）。</li></ul>
+<h3>11.2 分阶段投喂方法（怎么用这份项目书）</h3>
+<p>每个里程碑开新会话时，给 Codex 的提示词模板：</p>
+<pre><code>你是一名资深全栈工程师。请严格依据《智财代账工作台项目书》实施 M&lt; n &gt; 里程碑。
+项目书内容如下：【粘贴本文档全文（或让 Codex 读取仓库 docs/ 下的项目书文件）】
+当前仓库状态：&lt;附 git log --oneline -5 或说明&quot;从零开始&quot;&gt;
+要求：
+1. 只做 M&lt; n &gt; 范围，不要实现后续里程碑功能；
+2. 完成后运行全部测试并修复至全绿；
+3. 在 README&quot;假设与决策记录&quot;登记你做的假设；
+4. 输出变更清单与 M&lt; n &gt; 验收标准逐条自检结果。</code></pre>
+<h3>11.3 全局验收清单（最终交付时逐条打勾）</h3>
+<ul><li>[ ] start.bat 一键启动，断网可用（本地 vendor 回退）</li><li>[ ] 100 账套 × 10 年模拟数据下报表与列表性能达标（9 章）</li><li>[ ] 借贷平衡/期间锁/红冲互链等会计约束单测全绿</li><li>[ ] 自动记账端到端演示：导入发票+流水 → 批量生成平衡凭证 → 过账 → 报表数字正确</li><li>[ ] 申报台账全税种演示：生成→计算→标记→逾期标红</li><li>[ ] 备份文件恢复演练通过</li><li>[ ] README 完整（安装/启动/备份/恢复/FAQ）</li></ul>
+<hr/>
+<h2>12. 附录</h2>
+<h3>附录 A：Odoo → 本项目借鉴对照速查</h3>
+<table><tr><th>Odoo 机制</th><th>Odoo 出处</th><th>本项目落点</th></tr><tr><td>模块 = manifest + models/views/security</td><td><code>__manifest__.py</code></td><td><code>app/modules/&lt;m&gt;/</code> + ModuleDescriptor</td></tr><tr><td>模型驱动视图（XML）</td><td><code>views/*.xml</code></td><td><code>views.py</code> 视图配置 dict</td></tr><tr><td>recordset domain 语法</td><td><code>models.Model.search()</code></td><td><code>core/domain.py</code></td></tr><tr><td>多公司 company_id + record rules</td><td><code>res.company</code></td><td><code>res_book</code> + book_context 中间件</td></tr><tr><td>mail.thread chatter</td><td><code>mail.thread</code> mixin</td><td>audit_log + note_message</td></tr><tr><td>ir.sequence</td><td><code>ir_sequence</code> 表</td><td><code>core/sequence.py</code></td></tr><tr><td>ir.cron</td><td><code>ir_cron</code> 表</td><td><code>core/scheduler.py</code></td></tr><tr><td>发票=account.move(move_type)</td><td><code>account.move</code></td><td>invoice_bill(direction) + account_move(source_type)</td></tr><tr><td>银行对账规则 reconcile model</td><td><code>account.reconcile.model</code></td><td>auto_entry_rule</td></tr><tr><td>soft delete active 字段</td><td>全模型 <code>active</code></td><td>BaseModel.active</td></tr></table>
+<h3>附录 B：关键业务参数默认值（存 ir_config，界面可改）</h3>
+<table><tr><th>参数</th><th>默认值</th></tr><tr><td><code>payroll.iit.brackets</code></td><td>累计预扣率表（3%/10%/20%/25%/30%/35%/45% 七级，现行标准）</td></tr><tr><td><code>tax.vat.small.quarterly_free_limit</code></td><td>300000（季度免征额，可改 0 关闭）</td></tr><tr><td><code>tax.stamp.rate.purchase_sale</code></td><td>0.0003</td></tr><tr><td><code>tax.surtax.rates</code></td><td>城建 0.07 / 教育附加 0.03 / 地方附加 0.02</td></tr><tr><td><code>backup.dir</code></td><td>OneDrive 目录（首次向导设置）</td></tr><tr><td><code>backup.keep_copies</code></td><td>90</td></tr><tr><td><code>entry.category_map</code></td><td>发票 category → 科目编码映射（预置 20 类常用）</td></tr><tr><td><code>portal.links</code></td><td>电子税务局/单一窗口/电子口岸/数字外管 URL</td></tr></table>
+<h3>附录 C：常用发票类别 → 科目映射（种子）</h3>
+<p>办公用品→6602.01 管理费用-办公费；差旅→6602.02；业务招待→6602.03；房租→6602.04/或长期待摊；水电物业→6602.05；通讯网络→6602.06；广告宣传→6601.03 销售费用；运输物流→6601.04；材料采购→1403 原材料/1405 库存商品（按客户行业选择）；固定资产类→1601 固定资产；咨询服务→6602 管理费用。</p>
+<h3>附录 D：术语表</h3>
+<table><tr><th>术语</th><th>含义</th></tr><tr><td>账套（book）</td><td>一家客户公司的独立核算单元，对标 Odoo 的 company</td></tr><tr><td>凭证（move）</td><td>记账凭证，借贷分录集合</td></tr><tr><td>过账（post）</td><td>凭证生效进入账簿，之后不可修改</td></tr><tr><td>红冲</td><td>生成反向凭证冲销原凭证</td></tr><tr><td>结转损益</td><td>期末将损益类科目余额结至本年利润</td></tr><tr><td>申报底稿</td><td>系统计算的应纳税额过程快照</td></tr><tr><td>属期</td><td>税款所属期间（如 2026-08）</td></tr><tr><td>征期</td><td>申报期限（如次月 15 日前）</td></tr></table>
+<hr/>
+<p><strong>文档结束。</strong> 本项目书为 v1.0 基线；实施过程中发现的补充需求一律以&quot;变更记录&quot;形式追加在本章之后，不得直接改动已验收章节内容。</p>
+</body>
+</html>

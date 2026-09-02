@@ -1,0 +1,445 @@
+/* 智财代账工作台 全局样式（项目书 8.4 视觉规范，Odoo 风格浅色主题） */
+:root {
+  --zc-primary: #714B67;         /* Odoo 紫 */
+  --zc-primary-light: #8f6a83;
+  --zc-primary-bg: #f3eef2;
+  --zc-success: #28A745;
+  --zc-warning: #F59E0B;
+  --zc-danger: #DC3545;
+  --zc-info: #17A2B8;
+  --zc-bg: #F9F9F9;
+  --zc-card: #FFFFFF;
+  --zc-border: #E5E5E5;
+  --zc-text: #212529;
+  --zc-text-2: #6C757D;
+  --zc-text-3: #ADB5BD;
+  --sidebar-w: 220px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h: 52px;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  color: var(--zc-text);
+  background: var(--zc-bg);
+}
+
+/* Element Plus 主色对齐 Odoo 紫 */
+.el-button--primary { --el-button-bg-color: var(--zc-primary); --el-button-border-color: var(--zc-primary); --el-button-hover-bg-color: var(--zc-primary-light); --el-button-hover-border-color: var(--zc-primary-light); }
+.el-menu { border-right: none !important; }
+
+/* ---------- 启动占位 ---------- */
+.boot-loading {
+  height: 100%; display: flex; flex-direction: column; gap: 14px;
+  align-items: center; justify-content: center; color: var(--zc-text-2);
+}
+.boot-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--zc-primary-bg); border-top-color: var(--zc-primary);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 登录页 ---------- */
+.login-wrap {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #5d3a53 0%, #714B67 55%, #8f6a83 100%);
+}
+.login-card {
+  width: 380px; background: #fff; border-radius: 8px; padding: 36px 34px 28px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+.login-title { text-align: center; margin-bottom: 4px; font-size: 20px; font-weight: 600; }
+.login-sub { text-align: center; color: var(--zc-text-2); font-size: 12px; margin-bottom: 24px; }
+.login-logo { text-align: center; font-size: 40px; margin-bottom: 6px; }
+
+/* ---------- 整体布局 ---------- */
+.shell { display: flex; height: 100%; }
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0; background: var(--zc-primary); color: #fff;
+  display: flex; flex-direction: column; transition: width 0.2s; overflow: hidden;
+}
+.sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+.sidebar-logo {
+  height: var(--topbar-h); display: flex; align-items: center; gap: 10px; padding: 0 16px;
+  font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap;
+}
+.sidebar-logo .logo-icon { font-size: 22px; }
+.sidebar-nav { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+.nav-group-title {
+  padding: 14px 16px 6px; font-size: 11px; color: rgba(255,255,255,0.55);
+  letter-spacing: 1px; white-space: nowrap;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer;
+  color: rgba(255,255,255,0.82); white-space: nowrap; border-left: 3px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.nav-item.active { background: rgba(255,255,255,0.14); color: #fff; border-left-color: #fff; }
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.sidebar.collapsed .nav-label, .sidebar.collapsed .nav-group-title,
+.sidebar.collapsed .sidebar-logo .logo-text { display: none; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+
+.main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: var(--topbar-h); background: var(--zc-card); border-bottom: 1px solid var(--zc-border);
+  display: flex; align-items: center; gap: 14px; padding: 0 18px; flex-shrink: 0;
+}
+.topbar-title { font-size: 15px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-spacer { flex: 1; }
+.book-switcher { width: 220px; }
+.topbar .el-select .el-input__wrapper { box-shadow: 0 0 0 1px var(--zc-border) inset; }
+
+.page-content { flex: 1; overflow: auto; padding: 18px; }
+
+/* ---------- 通用视图 ---------- */
+.view-card {
+  background: var(--zc-card); border: 1px solid var(--zc-border); border-radius: 4px;
+}
+.list-toolbar {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--zc-border);
+}
+.list-toolbar .spacer { flex: 1; }
+.filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-chip {
+  font-size: 12px; padding: 3px 10px; border-radius: 12px; cursor: pointer; user-select: none;
+  background: var(--zc-primary-bg); color: var(--zc-primary); border: 1px solid transparent;
+}
+.filter-chip.active { background: var(--zc-primary); color: #fff; }
+
+.list-table { width: 100%; }
+.list-table th.el-table__cell { background: var(--zc-bg); color: var(--zc-text-2); font-weight: 500; }
+.list-row-link { color: var(--zc-primary); cursor: pointer; font-weight: 500; }
+.list-row-link:hover { text-decoration: underline; }
+.pager-wrap { display: flex; justify-content: flex-end; padding: 10px 14px; }
+
+.empty-state { padding: 60px 0; text-align: center; color: var(--zc-text-2); }
+.empty-state .empty-icon { font-size: 42px; margin-bottom: 10px; }
+
+/* ---------- 表单视图 ---------- */
+.form-head {
+  display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+  border-bottom: 1px solid var(--zc-border); flex-wrap: wrap;
+}
+.form-head .form-title { font-size: 17px; font-weight: 600; }
+.form-head .spacer { flex: 1; }
+.form-groups { padding: 6px 18px 18px; }
+.form-group-title {
+  font-size: 13px; font-weight: 600; color: var(--zc-primary);
+  margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--zc-primary-bg);
+}
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 24px; }
+.form-grid .full-col { grid-column: 1 / -1; }
+@media (max-width: 900px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* ---------- 状态徽章 ---------- */
+.zc-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.zc-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------- 活动日志（Chatter） ---------- */
+.chatter-panel { margin-top: 16px; }
+.chatter-title {
+  font-size: 13px; font-weight: 600; color: var(--zc-text-2); padding: 12px 18px 8px;
+}
+.chatter-list { padding: 0 18px 18px; max-height: 320px; overflow-y: auto; }
+.chatter-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--zc-border); }
+.chatter-avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--zc-primary-bg);
+  color: var(--zc-primary); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; flex-shrink: 0;
+}
+.chatter-body { flex: 1; min-width: 0; font-size: 13px; }
+.chatter-meta { font-size: 12px; color: var(--zc-text-2); margin-bottom: 2px; }
+.chatter-note { background: var(--zc-bg); border-radius: 4px; padding: 6px 10px; margin-top: 3px; }
+.chatter-diff { color: var(--zc-text-2); font-size: 12px; }
+.chatter-diff .old { text-decoration: line-through; }
+.chatter-diff .new { color: var(--zc-primary); font-weight: 500; }
+.chatter-input { display: flex; gap: 8px; padding: 0 18px 18px; }
+
+/* ---------- 仪表盘 ---------- */
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.dash-card { background: var(--zc-card); border: 1px solid var(--zc-border); border-radius: 4px; padding: 16px 18px; }
+.dash-card h4 { margin: 0 0 10px; font-size: 13px; color: var(--zc-text-2); font-weight: 500; }
+.dash-big { font-size: 28px; font-weight: 600; color: var(--zc-primary); }
+.dash-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; cursor: pointer; }
+.dash-row:hover { background: var(--zc-primary-bg); border-radius: 3px; }
+
+/* ---------- 全局搜索下拉 ---------- */
+.global-search { width: 280px; }
+.search-pop { max-height: 380px; overflow-y: auto; }
+.search-item { padding: 7px 10px; cursor: pointer; border-radius: 4px; }
+.search-item:hover { background: var(--zc-primary-bg); }
+.search-item .title { font-size: 13px; font-weight: 500; }
+.search-item .subtitle { font-size: 12px; color: var(--zc-text-2); }
+
+/* toast 出现在顶部中间 */
+.el-message { min-width: 260px; }
+
+/* 响应式：<900px 侧栏自动收起 */
+@media (max-width: 900px) {
+  .sidebar { width: var(--sidebar-w-collapsed); }
+  .sidebar .nav-label, .sidebar .nav-group-title, .sidebar .logo-text { display: none; }
+  .sidebar .nav-item { justify-content: center; padding: 10px 0; }
+  .book-switcher { width: 150px; }
+  .global-search { width: 160px; }
+}
+
+/* ==================== M2 记账核心 ==================== */
+
+/* 凭证录入：底栏借贷合计 */
+.move-total-bar {
+  display: flex; align-items: center; gap: 26px;
+  margin-top: 12px; padding: 10px 16px;
+  background: var(--zc-primary-bg); border-radius: 6px;
+  border: 1px solid var(--zc-border);
+}
+.move-total-bar .total-item { display: flex; align-items: baseline; gap: 8px; }
+.move-total-bar .label { font-size: 12px; color: var(--zc-text-2); }
+.move-total-bar .value { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.move-total-bar .value.ok  { color: var(--zc-success); }
+.move-total-bar .value.bad { color: var(--zc-danger); }
+.balance-warn {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--zc-danger); font-size: 13px; font-weight: 500;
+}
+
+/* 账簿 / 报表：合计行 */
+.ledger-total-line {
+  margin-top: 10px; padding: 9px 14px;
+  background: var(--zc-bg); border: 1px solid var(--zc-border); border-radius: 6px;
+  font-size: 13px; color: var(--zc-text-2);
+}
+.ledger-total-line b { color: var(--zc-text); font-variant-numeric: tabular-nums; }
+
+/* 报表顶部警示条（不平 = 红色，提示 = 黄色） */
+.report-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; margin-bottom: 12px;
+  background: #FDECEA; color: var(--zc-danger);
+  border: 1px solid var(--zc-danger); border-radius: 6px;
+  font-size: 13px; font-weight: 500;
+}
+.report-alert.warn {
+  background: #FFF7E6; color: #B26A00; border-color: var(--zc-warning);
+}
+
+/* 资产负债表左右两栏 */
+.bs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.bs-col { border: 1px solid var(--zc-border); }
+.bs-col:first-child { border-right: none; }
+.bs-col-head {
+  padding: 8px 14px; background: var(--zc-primary-bg);
+  font-weight: 600; font-size: 14px; text-align: center;
+  border-bottom: 1px solid var(--zc-border);
+}
+.bs-sec-title {
+  padding: 6px 14px; background: var(--zc-bg);
+  font-size: 12px; color: var(--zc-text-2); font-weight: 600;
+}
+.bs-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 14px; font-size: 13px;
+  border-bottom: 1px dashed var(--zc-border);
+}
+.bs-row .amt { font-variant-numeric: tabular-nums; color: var(--zc-text); }
+.bs-subtotal {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 14px; font-size: 13px; font-weight: 600;
+  background: #FAFAFA; border-bottom: 1px solid var(--zc-border);
+}
+.bs-subtotal .amt { font-variant-numeric: tabular-nums; }
+.bs-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; font-size: 14px; font-weight: 700;
+  background: var(--zc-primary-bg); color: var(--zc-primary);
+}
+.bs-total .amt { font-variant-numeric: tabular-nums; }
+
+/* 数字列统一右对齐等宽，便于对账 */
+.el-table .cell { font-variant-numeric: tabular-nums; }
+
+/* 窄屏：资产负债表改为上下堆叠 */
+@media (max-width: 900px) {
+  .bs-grid { grid-template-columns: 1fr; }
+  .bs-col:first-child { border-right: 1px solid var(--zc-border); border-bottom: none; }
+  .move-total-bar { flex-wrap: wrap; gap: 14px; }
+}
+
+/* ==================== M3 发票 / 银行 / 自动记账 ==================== */
+
+/* 银行对账：左右分栏 */
+.bank-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.bank-left, .bank-right { min-width: 0; }
+.bank-empty {
+  height: 300px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--zc-border); border-radius: 6px;
+  color: var(--zc-text-2); font-size: 13px; padding: 20px;
+}
+/* 已对账的流水行淡化显示 */
+.bank-done-row { opacity: 0.55; }
+
+/* 导入向导：错误行标红（前端直观提示哪行有问题） */
+.import-error-row { background: #FDF0EF !important; }
+.import-error-row td { color: var(--zc-danger) !important; }
+
+/* 自动记账工作台：未匹配规则的待人工项淡黄底 */
+.ae-unmatched-row { background: #FFFBF0 !important; }
+
+/* 窄屏：分栏改上下堆叠 */
+@media (max-width: 1100px) {
+  .bank-split { grid-template-columns: 1fr; }
+}
+
+/* ==================== M4 申报台账与日历 ==================== */
+
+/* 逾期行标红（项目书 7.9：逾期红） */
+.tax-overdue-row { background: #FDF0EF !important; }
+
+/* 月历单元格 */
+.cal-cell { height: 100%; padding: 2px; }
+.cal-day { font-size: 12px; color: var(--zc-text-2); }
+.cal-item {
+  font-size: 11px; line-height: 1.5; margin-top: 2px; padding: 1px 4px;
+  border-radius: 3px; cursor: pointer; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+  background: var(--zc-primary-bg); color: var(--zc-primary);
+}
+.cal-item:hover { filter: brightness(0.95); }
+/* 状态配色：pending 灰 / preparing 蓝 / submitted 橙 / paid 绿 / exempt 白 / 逾期红 */
+.cal-item.pending   { background: #EEEEEE; color: #666; }
+.cal-item.preparing { background: #E8F0FE; color: #1967D2; }
+.cal-item.submitted { background: #FFF3E0; color: #E8710A; }
+.cal-item.paid      { background: #E6F4EA; color: #1E8E3E; }
+.cal-item.done      { background: #E6F4EA; color: #1E8E3E; }
+.cal-item.exempt    { background: #FFFFFF; color: var(--zc-text-2);
+                      border: 1px solid var(--zc-border); }
+.cal-item.od        { background: var(--zc-danger); color: #fff; }
+
+/* 计算底稿公式条 */
+.snap-formula {
+  padding: 10px 14px; margin-bottom: 12px;
+  background: var(--zc-primary-bg); color: var(--zc-primary);
+  border-radius: 6px; font-size: 13px; font-weight: 600;
+}
+
+/* ==================== M5 合同 / 任务 / 仪表盘 ==================== */
+
+/* 仪表盘卡片强化 */
+.dash-empty { padding: 14px 0; color: var(--zc-text-3); font-size: 13px; }
+.dash-list { max-height: 240px; overflow-y: auto; }
+.dash-row .hl-warn   { color: var(--zc-warning); font-weight: 600; }
+.dash-row .hl-ok     { color: var(--zc-success); font-weight: 600; }
+.dash-row .hl-danger { color: var(--zc-danger); font-weight: 600; }
+.ellipsis { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
+.dash-card-wide { grid-column: 1 / -1; }
+
+/* 各客户进度表 */
+.progress-head, .progress-row {
+  display: grid; grid-template-columns: minmax(180px, 1.6fr) repeat(4, 80px);
+  align-items: center; gap: 4px;
+}
+.progress-head {
+  font-size: 12px; color: var(--zc-text-2); font-weight: 600;
+  padding: 6px 8px; border-bottom: 1px solid var(--zc-border);
+}
+.progress-body { max-height: 300px; overflow-y: auto; }
+.progress-row {
+  font-size: 13px; padding: 6px 8px; cursor: pointer;
+  border-bottom: 1px dashed var(--zc-border);
+}
+.progress-row:hover { background: var(--zc-primary-bg); }
+.progress-row .ph-name { font-weight: 500; }
+.lamp {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  margin-right: 5px; vertical-align: middle;
+}
+.lamp-done    { background: var(--zc-success); }
+.lamp-pending { background: var(--zc-warning); }
+.lamp-none    { background: #D9D9D9; }
+.dash-legend {
+  display: flex; gap: 16px; margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--zc-border); font-size: 12px; color: var(--zc-text-2);
+}
+
+/* 任务看板 */
+.kanban { display: flex; gap: 14px; padding: 16px 18px; overflow-x: auto; }
+.kanban-col {
+  flex: 1; min-width: 240px; max-width: 340px;
+  background: var(--zc-bg); border: 1px solid var(--zc-border); border-radius: 6px;
+  display: flex; flex-direction: column;
+}
+.kanban-col-head {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--zc-border);
+  background: var(--zc-card); border-radius: 6px 6px 0 0;
+}
+.kanban-dot { width: 9px; height: 9px; border-radius: 50%; }
+.kanban-count {
+  margin-left: auto; font-size: 12px; color: var(--zc-text-2);
+  background: var(--zc-primary-bg); border-radius: 10px; padding: 0 8px;
+}
+.kanban-body { flex: 1; padding: 10px; min-height: 200px; }
+.kanban-card {
+  background: var(--zc-card); border: 1px solid var(--zc-border); border-radius: 5px;
+  padding: 10px 12px; margin-bottom: 10px; cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.kanban-card-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.kanban-card-meta { display: flex; align-items: center; margin-bottom: 8px; }
+.kanban-card-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--zc-text-2);
+}
+.kanban-card-actions {
+  display: flex; gap: 2px; margin-top: 8px; padding-top: 8px;
+  border-top: 1px dashed var(--zc-border);
+}
+.kanban-empty { padding: 20px 0; text-align: center; color: var(--zc-text-3); font-size: 12px; }
+.task-overdue { color: var(--zc-danger); font-weight: 600; }
+.prio { font-weight: 600; }
+.prio-low    { color: var(--zc-text-2); }
+.prio-normal { color: var(--zc-info); }
+.prio-high   { color: var(--zc-warning); }
+.prio-urgent { color: var(--zc-danger); }
+
+/* 窄屏：看板横向滚动即可，无需额外处理 */
+
+/* ---------- M6 外贸 / 工资 / 文档中心 ---------- */
+/* 汇总数字条（外贸总览等） */
+.stat-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-item {
+  flex: 1; min-width: 150px; padding: 12px 16px; background: var(--zc-bg);
+  border: 1px solid var(--zc-border); border-radius: 6px;
+}
+.stat-item .stat-label { font-size: 12px; color: var(--zc-text-2); margin-bottom: 4px; }
+.stat-item .stat-value { font-size: 20px; font-weight: 600; }
+.stat-item .stat-sub { font-size: 11px; color: var(--zc-text-2); margin-top: 4px; }
+
+/* 平台链接卡片 */
+.link-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.link-card {
+  padding: 14px 16px; border: 1px solid var(--zc-border); border-radius: 6px;
+  cursor: pointer; background: var(--zc-card); transition: box-shadow 0.15s, border-color 0.15s;
+}
+.link-card:hover { border-color: var(--zc-primary); box-shadow: 0 2px 12px rgba(113,75,103,0.15); }
+
+/* 文档中心：拖拽上传区 */
+.doc-dropzone {
+  border: 2px dashed var(--zc-border); border-radius: 8px; padding: 22px;
+  text-align: center; color: var(--zc-text-2); cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.doc-dropzone.dragover { border-color: var(--zc-primary); background: var(--zc-primary-bg); }
+.doc-dropzone .dz-icon { font-size: 30px; margin-bottom: 6px; }
+.doc-dropzone .dz-hint { font-size: 12px; color: var(--zc-text-3); margin-top: 4px; }
+
+/* 工资批次状态灯 */
+.pay-state { display: inline-flex; align-items: center; gap: 6px; }
+.pay-state .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }

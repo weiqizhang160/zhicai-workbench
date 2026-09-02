@@ -1,0 +1,15 @@
+# 运行配置示例（复制为 config.yaml 后按需修改；首次启动也会自动生成）
+host: 127.0.0.1
+port: 8000
+db_path: ./data/zhicai.db
+attachments_dir: ./data/attachments
+
+# OneDrive 备份目录：留空 = 暂不自动备份；
+# 填如 C:/Users/你的用户名/OneDrive/财务系统备份 可开启每日 09:00 自动备份
+backup_dir: ''
+
+backup_keep_copies: 90
+session_expire_hours: 12
+
+# 会话签名密钥：留空则系统首次启动随机生成（推荐留空）
+session_secret: ''
